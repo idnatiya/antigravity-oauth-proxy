@@ -10,12 +10,44 @@ import (
 
 // ContentPart represents a single part of a content message.
 type ContentPart struct {
-	Text             string            `json:"text,omitempty"`
-	ThoughtSignature string            `json:"thoughtSignature,omitempty"`
-	InlineData       *InlineData       `json:"inlineData,omitempty"`
-	InlineDataSnake  *InlineData       `json:"inline_data,omitempty"`
-	FunctionCall     *FunctionCall     `json:"functionCall,omitempty"`
-	FunctionResponse *FunctionResponse `json:"functionResponse,omitempty"`
+	Text                  string            `json:"text,omitempty"`
+	ThoughtSignature      string            `json:"thoughtSignature,omitempty"`
+	ThoughtSignatureSnake string            `json:"thought_signature,omitempty"`
+	InlineData            *InlineData       `json:"inlineData,omitempty"`
+	InlineDataSnake       *InlineData       `json:"inline_data,omitempty"`
+	FunctionCall          *FunctionCall     `json:"functionCall,omitempty"`
+	FunctionResponse      *FunctionResponse `json:"functionResponse,omitempty"`
+}
+
+// GetThoughtSignature returns the thought signature from either camelCase or snake_case field.
+func (p *ContentPart) GetThoughtSignature() string {
+	if p.ThoughtSignature != "" {
+		return p.ThoughtSignature
+	}
+	return p.ThoughtSignatureSnake
+}
+
+// SetThoughtSignature synchronizes both camelCase and snake_case thought signature fields.
+func (p *ContentPart) SetThoughtSignature(sig string) {
+	p.ThoughtSignature = sig
+	p.ThoughtSignatureSnake = sig
+	if p.FunctionCall != nil {
+		p.FunctionCall.SetThoughtSignature(sig)
+	}
+}
+
+func (p *ContentPart) UnmarshalJSON(b []byte) error {
+	type alias ContentPart
+	var a alias
+	if err := json.Unmarshal(b, &a); err != nil {
+		return err
+	}
+	*p = ContentPart(a)
+	sig := p.GetThoughtSignature()
+	if sig != "" {
+		p.SetThoughtSignature(sig)
+	}
+	return nil
 }
 
 type InlineData struct {
@@ -48,9 +80,39 @@ type GeminiParameterSchema struct {
 
 // FunctionCall represents a tool call emitted by the model.
 type FunctionCall struct {
-	ID   string                 `json:"id,omitempty"`
-	Name string                 `json:"name,omitempty"`
-	Args map[string]interface{} `json:"args,omitempty"`
+	ID                    string                 `json:"id,omitempty"`
+	Name                  string                 `json:"name,omitempty"`
+	Args                  map[string]interface{} `json:"args,omitempty"`
+	ThoughtSignature      string                 `json:"thoughtSignature,omitempty"`
+	ThoughtSignatureSnake string                 `json:"thought_signature,omitempty"`
+}
+
+// GetThoughtSignature returns the thought signature from either camelCase or snake_case field.
+func (f *FunctionCall) GetThoughtSignature() string {
+	if f.ThoughtSignature != "" {
+		return f.ThoughtSignature
+	}
+	return f.ThoughtSignatureSnake
+}
+
+// SetThoughtSignature synchronizes both camelCase and snake_case thought signature fields.
+func (f *FunctionCall) SetThoughtSignature(sig string) {
+	f.ThoughtSignature = sig
+	f.ThoughtSignatureSnake = sig
+}
+
+func (f *FunctionCall) UnmarshalJSON(b []byte) error {
+	type alias FunctionCall
+	var a alias
+	if err := json.Unmarshal(b, &a); err != nil {
+		return err
+	}
+	*f = FunctionCall(a)
+	sig := f.GetThoughtSignature()
+	if sig != "" {
+		f.SetThoughtSignature(sig)
+	}
+	return nil
 }
 
 // FunctionResponse represents the tool result returned by the client.

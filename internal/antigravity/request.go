@@ -62,6 +62,12 @@ func prepareAntigravityRequest(req *GenerateContentRequest) {
 			Msg("Defaulted missing functionResponse IDs in request contents")
 	}
 
+	if missing := ensureThoughtSignatures(req.Request.Contents, req.Model); missing > 0 {
+		logger.Get().Warn().
+			Int("missing_signatures", missing).
+			Msg("Defaulted missing thought_signature in request contents")
+	}
+
 	req.Request.SystemInstruction = buildAntigravitySystemInstruction(req.Request.SystemInstruction)
 	logPreparedThinkingConfig(req)
 }
@@ -461,5 +467,35 @@ func isEmptyContentPart(part ContentPart) bool {
 	if part.FunctionCall != nil || part.FunctionResponse != nil || part.InlineData != nil || part.InlineDataSnake != nil {
 		return false
 	}
+	if part.GetThoughtSignature() != "" {
+		return false
+	}
 	return part.Text == ""
+}
+
+const DefaultBypassThoughtSignature = "skip_thought_signature_validator"
+
+func ensureThoughtSignatures(contents []Content, model string) int {
+	missing := 0
+	for contentIndex := range contents {
+		for partIndex := range contents[contentIndex].Parts {
+			part := &contents[contentIndex].Parts[partIndex]
+			if part.FunctionCall == nil {
+				continue
+			}
+
+			sig := part.GetThoughtSignature()
+			if sig == "" && part.FunctionCall != nil {
+				sig = part.FunctionCall.GetThoughtSignature()
+			}
+
+			if strings.TrimSpace(sig) == "" {
+				sig = DefaultBypassThoughtSignature
+				missing++
+			}
+
+			part.SetThoughtSignature(sig)
+		}
+	}
+	return missing
 }

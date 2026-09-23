@@ -415,3 +415,110 @@ func TestApplyHeadersMatchesAntigravityCLI(t *testing.T) {
 		t.Fatalf("Accept = %q, want empty", got)
 	}
 }
+
+func TestEnsureThoughtSignatures(t *testing.T) {
+	t.Run("defaults missing thought signature to bypass sentinel", func(t *testing.T) {
+		req := &GenerateContentRequest{
+			Model: "gemini-3.8-flash-low",
+			Request: GeminiInternalRequest{
+				Contents: []Content{
+					{
+						Role: "user",
+						Parts: []ContentPart{
+							{Text: "cara hubungin ke telegram gmna?"},
+						},
+					},
+					{
+						Role: "model",
+						Parts: []ContentPart{
+							{
+								FunctionCall: &FunctionCall{
+									ID:   "call_44461383-79cc-4e9d-b7ad-6db8691e95b1",
+									Name: "skill_view",
+									Args: map[string]interface{}{"name": "hermes-agent"},
+								},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Parts: []ContentPart{
+							{
+								FunctionResponse: &FunctionResponse{
+									ID:       "call_44461383-79cc-4e9d-b7ad-6db8691e95b1",
+									Name:     "skill_view",
+									Response: map[string]interface{}{"output": "ok"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		prepareAntigravityRequest(req)
+
+		modelPart := req.Request.Contents[1].Parts[0]
+		if modelPart.ThoughtSignature != DefaultBypassThoughtSignature {
+			t.Fatalf("ThoughtSignature = %q, want %q", modelPart.ThoughtSignature, DefaultBypassThoughtSignature)
+		}
+		if modelPart.ThoughtSignatureSnake != DefaultBypassThoughtSignature {
+			t.Fatalf("ThoughtSignatureSnake = %q, want %q", modelPart.ThoughtSignatureSnake, DefaultBypassThoughtSignature)
+		}
+		if modelPart.FunctionCall.ThoughtSignature != DefaultBypassThoughtSignature {
+			t.Fatalf("FunctionCall.ThoughtSignature = %q, want %q", modelPart.FunctionCall.ThoughtSignature, DefaultBypassThoughtSignature)
+		}
+		if modelPart.FunctionCall.ThoughtSignatureSnake != DefaultBypassThoughtSignature {
+			t.Fatalf("FunctionCall.ThoughtSignatureSnake = %q, want %q", modelPart.FunctionCall.ThoughtSignatureSnake, DefaultBypassThoughtSignature)
+		}
+
+		// Verify serialized JSON contains both thoughtSignature and thought_signature
+		jsonBytes, err := json.Marshal(req.Request.Contents[1])
+		if err != nil {
+			t.Fatalf("json.Marshal failed: %v", err)
+		}
+		jsonStr := string(jsonBytes)
+		if !strings.Contains(jsonStr, `"thoughtSignature":"skip_thought_signature_validator"`) {
+			t.Fatalf("JSON missing camelCase thoughtSignature: %s", jsonStr)
+		}
+		if !strings.Contains(jsonStr, `"thought_signature":"skip_thought_signature_validator"`) {
+			t.Fatalf("JSON missing snake_case thought_signature: %s", jsonStr)
+		}
+	})
+
+	t.Run("preserves existing thought signature", func(t *testing.T) {
+		existingSig := "valid_base64_signature_xyz"
+		req := &GenerateContentRequest{
+			Model: "gemini-3.8-flash-low",
+			Request: GeminiInternalRequest{
+				Contents: []Content{
+					{
+						Role: "model",
+						Parts: []ContentPart{
+							{
+								ThoughtSignature: existingSig,
+								FunctionCall: &FunctionCall{
+									ID:   "call_123",
+									Name: "read_file",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		prepareAntigravityRequest(req)
+
+		modelPart := req.Request.Contents[0].Parts[0]
+		if modelPart.ThoughtSignature != existingSig {
+			t.Fatalf("ThoughtSignature = %q, want %q", modelPart.ThoughtSignature, existingSig)
+		}
+		if modelPart.ThoughtSignatureSnake != existingSig {
+			t.Fatalf("ThoughtSignatureSnake = %q, want %q", modelPart.ThoughtSignatureSnake, existingSig)
+		}
+		if modelPart.FunctionCall.ThoughtSignature != existingSig {
+			t.Fatalf("FunctionCall.ThoughtSignature = %q, want %q", modelPart.FunctionCall.ThoughtSignature, existingSig)
+		}
+	})
+}

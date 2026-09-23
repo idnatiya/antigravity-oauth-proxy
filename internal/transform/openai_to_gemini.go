@@ -320,14 +320,17 @@ func convertMessagesToGeminiContents(messages []openai.Message) (geminiContents 
 					toolCallNameByID[id] = tc.Function.Name
 					toolCallIDByName[tc.Function.Name] = id
 				}
-				parts = append(parts, antigravity.ContentPart{
-					ThoughtSignature: thoughtSignature,
+				part := antigravity.ContentPart{
 					FunctionCall: &antigravity.FunctionCall{
 						ID:   id,
 						Name: tc.Function.Name,
 						Args: args,
 					},
-				})
+				}
+				if thoughtSignature != "" {
+					part.SetThoughtSignature(thoughtSignature)
+				}
+				parts = append(parts, part)
 			}
 		}
 

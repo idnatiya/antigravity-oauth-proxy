@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/openai"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/transform"
+	"github.com/google/uuid"
 )
 
 // openAIChatCompletionsHandler handles OpenAI-compatible chat completion requests.
@@ -216,6 +218,7 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 
 	// Adapter: CloudCode SSE -> StreamChunk (model text, tool calls, usage, etc.)
 	var streamPromptTokens, streamCompletionTokens int
+	var latestThoughtSignature string
 	chunkIn := make(chan openai.StreamChunk, 32)
 	go func() {
 		defer close(chunkIn)
@@ -256,6 +259,11 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 				continue
 			}
 
+			// Extract top-level or response-level thought signature if present
+			if sig := extractThoughtSignature(obj, nil, nil); sig != "" {
+				latestThoughtSignature = sig
+			}
+
 			// Usage metadata (optional)
 			if um, ok := obj["usageMetadata"].(map[string]interface{}); ok {
 				payload := map[string]interface{}{}
@@ -283,6 +291,10 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 						continue
 					}
 
+					if sig := extractThoughtSignature(cand, nil, nil); sig != "" {
+						latestThoughtSignature = sig
+					}
+
 					// Optional grounding metadata passthrough
 					if gm, ok := cand["groundingMetadata"]; ok && gm != nil {
 						chunkIn <- openai.StreamChunk{Type: "grounding_metadata", Data: gm}
@@ -307,6 +319,10 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 						if !ok {
 							logger.Get().Warn().Interface("part", p).Msg("Skipping invalid part in Gemini stream")
 							continue
+						}
+
+						if sig := extractThoughtSignature(cand, part, nil); sig != "" {
+							latestThoughtSignature = sig
 						}
 
 						// Thought tokens (reasoning) — map to OpenAI reasoning stream
@@ -395,11 +411,11 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 								Int("arg_keys", len(args)).
 								Msg("Emitting tool call from model")
 
-							var thoughtSignature string
-							if ts, ok := part["thoughtSignature"].(string); ok {
-								thoughtSignature = ts
-							} else if ts, ok := part["thought_signature"].(string); ok {
-								thoughtSignature = ts
+							thoughtSignature := extractThoughtSignature(cand, part, fc)
+							if thoughtSignature == "" {
+								thoughtSignature = latestThoughtSignature
+							} else {
+								latestThoughtSignature = thoughtSignature
 							}
 
 							// Emit tool call to OpenAI transformer
@@ -473,9 +489,11 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 
-	// Extract assistant text content from first candidate
+	// Extract assistant text content and tool calls from first candidate
 	var contentText string
 	var reasoningText string
+	var toolCalls []map[string]interface{}
+	finishReason := "stop"
 	if resp != nil && resp.Response != nil {
 		if cands, ok := resp.Response["candidates"].([]interface{}); ok && len(cands) > 0 {
 			if first, ok := cands[0].(map[string]interface{}); ok {
@@ -495,23 +513,48 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 				var bReasoning strings.Builder
 				for _, p := range parts {
 					if pm, ok := p.(map[string]interface{}); ok {
-						if txt, ok := pm["text"].(string); ok && txt != "" {
-							if isThought, ok := pm["thought"].(bool); ok && isThought {
+						if isThought, ok := pm["thought"].(bool); ok && isThought {
+							if txt, ok := pm["text"].(string); ok && txt != "" {
 								if bReasoning.Len() > 0 {
 									bReasoning.WriteString("\n")
 								}
 								bReasoning.WriteString(txt)
-							} else {
-								if bText.Len() > 0 {
-									bText.WriteString("\n")
-								}
-								bText.WriteString(txt)
 							}
+						} else if txt, ok := pm["text"].(string); ok && txt != "" {
+							if bText.Len() > 0 {
+								bText.WriteString("\n")
+							}
+							bText.WriteString(txt)
+						}
+
+						if fc, ok := pm["functionCall"].(map[string]interface{}); ok {
+							name, _ := fc["name"].(string)
+							args := fc["args"]
+							if args == nil {
+								args = map[string]interface{}{}
+							}
+							argsJSON, _ := json.Marshal(args)
+							thoughtSig := extractThoughtSignature(first, pm, fc)
+							callID := fmt.Sprintf("call_%s", uuid.New().String())
+							if thoughtSig != "" {
+								callID = callID + "|" + thoughtSig
+							}
+							toolCalls = append(toolCalls, map[string]interface{}{
+								"id":   callID,
+								"type": "function",
+								"function": map[string]interface{}{
+									"name":      name,
+									"arguments": string(argsJSON),
+								},
+							})
 						}
 					}
 				}
 				contentText = bText.String()
 				reasoningText = bReasoning.String()
+				if len(toolCalls) > 0 {
+					finishReason = "tool_calls"
+				}
 			}
 		}
 	}
@@ -522,6 +565,9 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 	}
 	if reasoningText != "" {
 		message["reasoning_content"] = reasoningText
+	}
+	if len(toolCalls) > 0 {
+		message["tool_calls"] = toolCalls
 	}
 
 	// Build OpenAI-style response
@@ -535,7 +581,7 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 			{
 				"index":         0,
 				"message":       message,
-				"finish_reason": "stop",
+				"finish_reason": finishReason,
 			},
 		},
 	}
@@ -572,4 +618,37 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 		Dur("api_call_duration", time.Since(apiStart)).
 		Dur("total_duration", time.Since(startTime)).
 		Msg("OpenAI non-streaming response completed")
+}
+
+func extractThoughtSignature(cand map[string]interface{}, part map[string]interface{}, fc map[string]interface{}) string {
+	check := func(m map[string]interface{}) string {
+		if m == nil {
+			return ""
+		}
+		if ts, ok := m["thought_signature"].(string); ok && strings.TrimSpace(ts) != "" {
+			return strings.TrimSpace(ts)
+		}
+		if ts, ok := m["thoughtSignature"].(string); ok && strings.TrimSpace(ts) != "" {
+			return strings.TrimSpace(ts)
+		}
+		return ""
+	}
+
+	if sig := check(part); sig != "" {
+		return sig
+	}
+	if sig := check(fc); sig != "" {
+		return sig
+	}
+	if sig := check(cand); sig != "" {
+		return sig
+	}
+	if cand != nil {
+		if content, ok := cand["content"].(map[string]interface{}); ok {
+			if sig := check(content); sig != "" {
+				return sig
+			}
+		}
+	}
+	return ""
 }

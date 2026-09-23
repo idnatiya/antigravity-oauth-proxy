@@ -109,3 +109,48 @@ func TestToolParityAggregation(t *testing.T) {
 	assert.Equal(t, 2, respCount, "expected exactly 2 functionResponse parts in aggregated user turn")
 	assert.Equal(t, []string{"read", "grep"}, respNames, "functionResponse names should resolve from tool_call_id and match call order")
 }
+
+func TestToolThoughtSignatureRestoration(t *testing.T) {
+	req := &openai.ChatCompletionRequest{
+		Model: "gemini-3.8-flash-low",
+		Messages: []openai.Message{
+			{
+				Role:    "user",
+				Content: "Hello",
+			},
+			{
+				Role: "assistant",
+				ToolCalls: []openai.OpenAIToolCall{
+					{
+						Index: 0,
+						ID:    "call_12345|sig_abc_xyz",
+						Type:  "function",
+						Function: openai.OpenAIFunctionCall{
+							Name:      "test_tool",
+							Arguments: `{"arg":"val"}`,
+						},
+					},
+				},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: "call_12345|sig_abc_xyz",
+				Content:    `{"result":"ok"}`,
+			},
+		},
+	}
+
+	contents, _, err := convertMessagesToGeminiContents(req.Messages)
+	require.NoError(t, err)
+	require.Len(t, contents, 3)
+
+	modelPart := contents[1].Parts[0]
+	assert.Equal(t, "sig_abc_xyz", modelPart.ThoughtSignature)
+	assert.Equal(t, "sig_abc_xyz", modelPart.ThoughtSignatureSnake)
+	assert.Equal(t, "call_12345", modelPart.FunctionCall.ID)
+	assert.Equal(t, "sig_abc_xyz", modelPart.FunctionCall.ThoughtSignature)
+	assert.Equal(t, "sig_abc_xyz", modelPart.FunctionCall.ThoughtSignatureSnake)
+
+	toolRespPart := contents[2].Parts[0]
+	assert.Equal(t, "call_12345", toolRespPart.FunctionResponse.ID)
+}

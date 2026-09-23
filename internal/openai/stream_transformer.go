@@ -326,6 +326,8 @@ func toGeminiFunctionCall(data interface{}) (GeminiFunctionCall, bool) {
 		}
 		if ts, ok := m["thoughtSignature"].(string); ok {
 			fc.ThoughtSignature = ts
+		} else if ts, ok := m["thought_signature"].(string); ok {
+			fc.ThoughtSignature = ts
 		}
 		return fc, fc.Name != "" && fc.Args != nil
 	}
