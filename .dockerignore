@@ -1,0 +1,10 @@
+.git
+.github
+.claude
+node_modules
+npm
+dist
+bin
+*.log
+.env
+.wrangler

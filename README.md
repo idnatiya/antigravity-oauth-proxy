@@ -34,6 +34,13 @@ npm install -g antigravity-oauth-proxy
 Other installation options:
 
 ```bash
+# Docker Compose
+docker compose up -d
+
+# Docker CLI
+docker build -t antigravity-oauth-proxy .
+docker run -d -p 9878:9878 -e ADMIN_API_KEY="replace-with-a-long-random-value" -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw antigravity-oauth-proxy
+
 # mise
 mise use -g go:github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@latest
 

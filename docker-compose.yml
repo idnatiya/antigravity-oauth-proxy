@@ -1,0 +1,16 @@
+services:
+  antigravity-proxy:
+    build: .
+    container_name: antigravity-oauth-proxy
+    restart: unless-stopped
+    ports:
+      - "9878:9878"
+    environment:
+      - PORT=9878
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-replace-with-a-long-random-value}
+      # Optional: set GCP project ID if automatic project discovery is not desired
+      # - CLOUDCODE_GCP_PROJECT_ID=your-project-id
+      # - LOG_LEVEL=info
+    volumes:
+      # Mount host OAuth credentials directory for persistent auto-refresh tokens
+      - ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw
