@@ -225,10 +225,22 @@ func TestDashboardAuthAndUsageHandlers(t *testing.T) {
 	})
 
 	t.Run("DashboardUIHTML", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
-		w := httptest.NewRecorder()
-		srv.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+		routes := []string{
+			"/dashboard",
+			"/dashboard/",
+			"/dashboard/overview",
+			"/dashboard/requests",
+			"/dashboard/models",
+			"/dashboard/security",
+			"/dashboard/login",
+		}
+
+		for _, r := range routes {
+			req := httptest.NewRequest(http.MethodGet, r, nil)
+			w := httptest.NewRecorder()
+			srv.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusOK, w.Code, "route: "+r)
+			assert.Contains(t, w.Header().Get("Content-Type"), "text/html", "route: "+r)
+		}
 	})
 }

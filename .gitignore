@@ -9,6 +9,9 @@ build/
 .gocache
 dist
 tmp/
+web/node_modules/
+web/dist/
+!web/dist/index.html
 
 /antigravity-oauth-proxy
 /antigravity-oauth-proxy.exe
