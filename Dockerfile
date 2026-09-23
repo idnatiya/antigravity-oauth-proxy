@@ -15,8 +15,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build standalone proxy binary
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/antigravity-oauth-proxy ./cmd/antigravity-oauth-proxy
+# Build standalone proxy and auth helper binaries
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/antigravity-oauth-proxy ./cmd/antigravity-oauth-proxy && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/auth ./cmd/auth
 
 # Stage 2: Minimal runtime
 FROM alpine:latest
@@ -25,8 +26,9 @@ RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy binaries from builder
 COPY --from=builder /build/antigravity-oauth-proxy /app/antigravity-oauth-proxy
+COPY --from=builder /build/auth /app/auth
 
 # Default port
 ENV PORT=9878
