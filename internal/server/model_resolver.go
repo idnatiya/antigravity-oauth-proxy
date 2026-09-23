@@ -225,7 +225,7 @@ func applyModelThinkingDefaults(requestedModel string, req *antigravity.GeminiIn
 		return
 	}
 	modelLower := strings.ToLower(strings.TrimSpace(requestedModel))
-	if !strings.Contains(modelLower, "3.7-flash") && !strings.Contains(modelLower, "3.8-flash") {
+	if strings.Contains(modelLower, "gpt-oss") {
 		return
 	}
 	if req.GenerationConfig == nil {

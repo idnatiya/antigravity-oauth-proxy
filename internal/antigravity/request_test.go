@@ -76,24 +76,39 @@ func TestPrepareAntigravityRequestDefaultsThinkingConfig(t *testing.T) {
 	if thinkingConfig.IncludeThoughts == nil || !*thinkingConfig.IncludeThoughts {
 		t.Fatalf("IncludeThoughts = %v, want true", thinkingConfig.IncludeThoughts)
 	}
-	if thinkingConfig.ThinkingBudget == nil || *thinkingConfig.ThinkingBudget != 10001 {
-		t.Fatalf("ThinkingBudget = %v, want 10001", thinkingConfig.ThinkingBudget)
+	if thinkingConfig.ThinkingBudget == nil || *thinkingConfig.ThinkingBudget != 1024 {
+		t.Fatalf("ThinkingBudget = %v, want 1024", *thinkingConfig.ThinkingBudget)
+	}
+
+	// Test that high models default to 10001
+	highReq := &GenerateContentRequest{
+		Model: "gemini-3.1-pro-high",
+		Request: GeminiInternalRequest{
+			Contents: []Content{{Role: "user", Parts: []ContentPart{{Text: "hello"}}}},
+		},
+	}
+	prepareAntigravityRequest(highReq)
+	if highReq.Request.GenerationConfig.ThinkingConfig.ThinkingBudget == nil || *highReq.Request.GenerationConfig.ThinkingConfig.ThinkingBudget != 10001 {
+		t.Fatalf("ThinkingBudget = %v, want 10001 for high model", *highReq.Request.GenerationConfig.ThinkingConfig.ThinkingBudget)
 	}
 }
 
 func TestPrepareAntigravityRequestClearsThinkingLevelForEncodedModel(t *testing.T) {
-	testModels := []string{
-		"gemini-3.1-pro-high",
-		"gemini-3.6-flash-high",
-		"gemini-3.6-flash-medium",
-		"gemini-3.6-flash-low",
+	testCases := []struct {
+		model      string
+		wantBudget int
+	}{
+		{model: "gemini-3.1-pro-high", wantBudget: 10001},
+		{model: "gemini-3.6-flash-high", wantBudget: 10001},
+		{model: "gemini-3.6-flash-medium", wantBudget: 4096},
+		{model: "gemini-3.6-flash-low", wantBudget: 1024},
 	}
 
-	for _, model := range testModels {
-		t.Run(model, func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.model, func(t *testing.T) {
 			includeThoughts := false
 			req := &GenerateContentRequest{
-				Model: model,
+				Model: tc.model,
 				Request: GeminiInternalRequest{
 					Contents: []Content{{Role: "user", Parts: []ContentPart{{Text: "hello"}}}},
 					GenerationConfig: &GeminiGenerationConfig{
@@ -114,8 +129,8 @@ func TestPrepareAntigravityRequestClearsThinkingLevelForEncodedModel(t *testing.
 			if thinkingConfig.IncludeThoughts == nil || *thinkingConfig.IncludeThoughts {
 				t.Fatalf("IncludeThoughts = %v, want false", thinkingConfig.IncludeThoughts)
 			}
-			if thinkingConfig.ThinkingBudget == nil || *thinkingConfig.ThinkingBudget != 10001 {
-				t.Fatalf("ThinkingBudget = %v, want 10001", thinkingConfig.ThinkingBudget)
+			if thinkingConfig.ThinkingBudget == nil || *thinkingConfig.ThinkingBudget != tc.wantBudget {
+				t.Fatalf("ThinkingBudget = %v, want %d", *thinkingConfig.ThinkingBudget, tc.wantBudget)
 			}
 		})
 	}

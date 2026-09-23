@@ -111,9 +111,9 @@ func (s *Server) openAIChatCompletionsHandler(w http.ResponseWriter, r *http.Req
 		if !isKnownUpstreamModelID(resolvedModel) && !isKnownUpstreamModelID(req.Model) {
 			if _, exists := data.Models[req.Model]; !exists {
 				if _, existsResolved := data.Models[resolvedModel]; !existsResolved {
-					fallbackModel := "gemini-3.8-flash-high"
+					fallbackModel := "gemini-3.8-flash-low"
 					if _, existsFallback := data.Models[fallbackModel]; !existsFallback {
-						fallbackModel = "gemini-3.7-flash-high"
+						fallbackModel = "gemini-3.7-flash-low"
 					}
 					if data.DefaultAgentModelID != "" {
 						if _, existsDefault := data.Models[data.DefaultAgentModelID]; existsDefault {

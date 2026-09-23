@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/dvcrn/antigravity-oauth-proxy/internal/env"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 	"github.com/google/uuid"
 )
@@ -181,7 +183,7 @@ func ensureAntigravityThinkingDefaults(req *GenerateContentRequest) {
 	}
 
 	// If thinkingBudget is explicitly 0 or thinkingLevel is THINKING_LEVEL_UNSPECIFIED,
-	// thinking is intentionally disabled — do not inject thinkingBudget: 10001.
+	// thinking is intentionally disabled — do not inject thinkingBudget.
 	isThinkingDisabled := (thinkingConfig.ThinkingBudget != nil && *thinkingConfig.ThinkingBudget == 0) ||
 		thinkingConfig.ThinkingLevel == "THINKING_LEVEL_UNSPECIFIED"
 
@@ -190,8 +192,45 @@ func ensureAntigravityThinkingDefaults(req *GenerateContentRequest) {
 		thinkingConfig.IncludeThoughts = &includeThoughts
 	}
 	if thinkingConfig.ThinkingBudget == nil && !isThinkingDisabled {
-		thinkingBudget := 10001
+		thinkingBudget := defaultThinkingBudgetForLevel(req.Model, thinkingConfig.ThinkingLevel)
 		thinkingConfig.ThinkingBudget = &thinkingBudget
+	}
+}
+
+func defaultThinkingBudgetForLevel(model string, level string) int {
+	if custom := env.GetOrDefault("DEFAULT_THINKING_BUDGET", ""); custom != "" {
+		if val, err := strconv.Atoi(custom); err == nil && val >= 0 {
+			return val
+		}
+	}
+
+	modelLower := strings.ToLower(model)
+	lvl := strings.ToLower(strings.TrimSpace(level))
+
+	switch {
+	case lvl == "high" || strings.Contains(modelLower, "-high"):
+		if customHigh := env.GetOrDefault("DEFAULT_HIGH_THINKING_BUDGET", ""); customHigh != "" {
+			if val, err := strconv.Atoi(customHigh); err == nil && val >= 0 {
+				return val
+			}
+		}
+		return 10001
+
+	case lvl == "medium" || strings.Contains(modelLower, "-medium"):
+		if customMed := env.GetOrDefault("DEFAULT_MEDIUM_THINKING_BUDGET", ""); customMed != "" {
+			if val, err := strconv.Atoi(customMed); err == nil && val >= 0 {
+				return val
+			}
+		}
+		return 4096
+
+	default: // low or unspecified
+		if customLow := env.GetOrDefault("DEFAULT_LOW_THINKING_BUDGET", ""); customLow != "" {
+			if val, err := strconv.Atoi(customLow); err == nil && val >= 0 {
+				return val
+			}
+		}
+		return 1024
 	}
 }
 
@@ -228,8 +267,11 @@ func clampMaxOutputTokens(req *GenerateContentRequest) {
 }
 
 func buildAntigravitySystemInstruction(existing *SystemInstruction) *SystemInstruction {
-	parts := []ContentPart{
-		{Text: strings.TrimSpace(SystemInstructionText)},
+	injectSystemPrompt := env.GetOrDefault("INJECT_ANTIGRAVITY_SYSTEM_PROMPT", "true")
+	var parts []ContentPart
+
+	if injectSystemPrompt != "false" && strings.TrimSpace(SystemInstructionText) != "" {
+		parts = append(parts, ContentPart{Text: strings.TrimSpace(SystemInstructionText)})
 	}
 
 	if existing != nil {
@@ -238,6 +280,10 @@ func buildAntigravitySystemInstruction(existing *SystemInstruction) *SystemInstr
 				parts = append(parts, ContentPart{Text: part.Text})
 			}
 		}
+	}
+
+	if len(parts) == 0 {
+		return nil
 	}
 
 	return &SystemInstruction{
