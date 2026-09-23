@@ -5,20 +5,19 @@
 ## Required Steps
 
 After making code changes, always run:
-- `mise run format` - Format Go code using goimports and gofumpt
-- `mise run test` - Run all tests to ensure nothing is broken
+- `make format` (or `mise run format`) - Format Go code using goimports and gofumpt
+- `make test` (or `mise run test`) - Run all tests to ensure nothing is broken
 
 ## Common Development Commands
 
 ### Building and Running
-- `mise run build` - Build the proxy binary for local use
-- `mise run run` - Run the proxy locally on port 9877
+- `make dev` - Run proxy locally with Air live-reloading (watches Go and Dashboard HTML)
+- `make build` - Build the proxy binary for local use
+- `make test` - Run all tests
+- `make format` - Format Go code
+- `make clean` - Clean temporary files (tmp/) and build binaries
 - `mise run build-worker` - Build for Cloudflare Workers deployment
 - `mise run wrangler-dev` - Run local development server with Wrangler
-
-### Development
-- `mise run test` - Run all tests
-- `go test ./internal/server -v` - Run specific package tests with verbose output
 
 ## High-Level Architecture
 

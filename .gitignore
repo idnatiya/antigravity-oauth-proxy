@@ -8,6 +8,7 @@ node_modules
 build/
 .gocache
 dist
+tmp/
 
 /antigravity-oauth-proxy
 /antigravity-oauth-proxy.exe
