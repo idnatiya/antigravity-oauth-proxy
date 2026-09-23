@@ -35,10 +35,12 @@ Other installation options:
 
 ```bash
 # Docker Compose
-docker compose up -d
+docker compose run --rm auth  # Login OAuth (one-time)
+docker compose up -d           # Start proxy
 
 # Docker CLI
 docker build -t antigravity-oauth-proxy .
+docker run -it --rm -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy --entrypoint /app/auth antigravity-oauth-proxy -no-browser  # Login OAuth
 docker run -d -p 9878:9878 -e ADMIN_API_KEY="replace-with-a-long-random-value" -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw antigravity-oauth-proxy
 
 # mise

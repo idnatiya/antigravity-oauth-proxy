@@ -14,3 +14,16 @@ services:
     volumes:
       # Mount host OAuth credentials directory for persistent auto-refresh tokens
       - ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw
+
+  # On-demand authentication helper service
+  # Run with: docker compose run --rm auth
+  auth:
+    build: .
+    container_name: antigravity-oauth-auth
+    entrypoint: ["/app/auth", "-no-browser"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw
+    profiles:
+      - auth
