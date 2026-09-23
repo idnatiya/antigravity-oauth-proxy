@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"crypto/rand"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -10,6 +12,8 @@ import (
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/env"
 	serverhttp "github.com/dvcrn/antigravity-oauth-proxy/internal/http"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
+	"github.com/dvcrn/antigravity-oauth-proxy/internal/usage"
+	"github.com/google/uuid"
 )
 
 // Server represents the proxy server with its dependencies
@@ -20,6 +24,8 @@ type Server struct {
 	mux               *http.ServeMux
 	antigravityClient *antigravity.Client
 	googleAuth        *GoogleAuth
+	usageStore        usage.Store
+	authSecret        []byte
 }
 
 type Option func(*Server)
@@ -27,6 +33,18 @@ type Option func(*Server)
 func WithGoogleAuth(store GoogleAuthStore) Option {
 	return func(s *Server) {
 		s.googleAuth = newGoogleAuth(store, s.httpClient)
+	}
+}
+
+func WithUsageStore(store usage.Store) Option {
+	return func(s *Server) {
+		s.usageStore = store
+	}
+}
+
+func WithAuthSecret(secret []byte) Option {
+	return func(s *Server) {
+		s.authSecret = secret
 	}
 }
 
@@ -42,6 +60,19 @@ func NewServer(provider credentials.CredentialsProvider, projectID string, optio
 	for _, option := range options {
 		option(s)
 	}
+
+	if len(s.authSecret) == 0 {
+		if secretStr, ok := env.Get("DASHBOARD_SECRET"); ok && secretStr != "" {
+			s.authSecret = []byte(secretStr)
+		} else if secretStr, ok := env.Get("SESSION_SECRET"); ok && secretStr != "" {
+			s.authSecret = []byte(secretStr)
+		} else {
+			randomSecret := make([]byte, 32)
+			_, _ = rand.Read(randomSecret)
+			s.authSecret = randomSecret
+		}
+	}
+
 	s.setupRoutes()
 
 	return s
@@ -139,6 +170,59 @@ func (s *Server) setupRoutes() {
 	mcpHandler := s.adminMiddleware(s.mcpHandler())
 	s.mux.HandleFunc("/mcp", mcpHandler)
 	s.mux.HandleFunc("/mcp/", mcpHandler)
+
+	// Dashboard Auth API
+	s.mux.HandleFunc("/api/auth/login", s.handleLogin)
+	s.mux.HandleFunc("/api/auth/logout", s.handleLogout)
+	s.mux.HandleFunc("/api/auth/me", s.handleMe)
+	s.mux.HandleFunc("/api/auth/change-password", s.dashboardAuthMiddleware(s.handleChangePassword))
+
+	// Dashboard Usage Telemetry API
+	s.mux.HandleFunc("/api/usage/stats", s.dashboardAuthMiddleware(s.handleUsageStats))
+	s.mux.HandleFunc("/api/usage/requests", s.dashboardAuthMiddleware(s.handleUsageRequests))
+
+	// Dashboard UI Frontend
+	s.mux.HandleFunc("/dashboard/", s.dashboardUIHandler)
+	s.mux.HandleFunc("/dashboard", s.dashboardUIHandler)
+
+	// Redirect root to /dashboard
+	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.Redirect(w, r, "/dashboard", http.StatusFound)
+			return
+		}
+		http.NotFound(w, r)
+	})
+}
+
+// recordUsage logs a completed or failed request into usage store asynchronously.
+func (s *Server) recordUsage(endpoint, model string, stream bool, statusCode int, duration time.Duration, promptTokens, completionTokens int, errMsg string) {
+	if s.usageStore == nil {
+		return
+	}
+	totalTokens := promptTokens + completionTokens
+	record := &usage.RequestRecord{
+		ID:               uuid.New().String(),
+		Timestamp:        time.Now().UTC(),
+		Endpoint:         endpoint,
+		Model:            model,
+		Stream:           stream,
+		StatusCode:       statusCode,
+		DurationMs:       duration.Milliseconds(),
+		PromptTokens:     promptTokens,
+		CompletionTokens: completionTokens,
+		TotalTokens:      totalTokens,
+		CostSavings:      usage.CalculateCostSavings(model, promptTokens, completionTokens),
+		ErrorMessage:     errMsg,
+	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.usageStore.RecordRequest(ctx, record); err != nil {
+			logger.Get().Warn().Err(err).Msg("Failed to record usage telemetry")
+		}
+	}()
 }
 
 // ServeHTTP implements http.Handler interface

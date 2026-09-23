@@ -139,6 +139,7 @@ func (s *Server) mcpAskGemini(ctx context.Context, in askGeminiInput) (askGemini
 			Str("model", resolvedModel).
 			Dur("api_call_duration", time.Since(apiCallStart)).
 			Msg("MCP ask_gemini GenerateContent failed")
+		s.recordUsage("/mcp", requestedModel, false, http.StatusInternalServerError, time.Since(apiCallStart), 0, 0, err.Error())
 		return askGeminiOutput{}, fmt.Errorf("ask_gemini failed for model %q: %w", requestedModel, err)
 	}
 
@@ -148,6 +149,20 @@ func (s *Server) mcpAskGemini(ctx context.Context, in askGeminiInput) (askGemini
 	if servedModel == "" {
 		servedModel = resolvedModel
 	}
+
+	promptTokens := 0
+	completionTokens := 0
+	if resp != nil && resp.Response != nil {
+		if um, ok := resp.Response["usageMetadata"].(map[string]interface{}); ok {
+			if v, ok := um["promptTokenCount"].(float64); ok {
+				promptTokens = int(v)
+			}
+			if v, ok := um["candidatesTokenCount"].(float64); ok {
+				completionTokens = int(v)
+			}
+		}
+	}
+	s.recordUsage("/mcp", servedModel, false, http.StatusOK, time.Since(apiCallStart), promptTokens, completionTokens, "")
 
 	text := extractGeminiText(resp.Response)
 	if text == "" {

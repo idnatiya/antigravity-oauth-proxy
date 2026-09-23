@@ -167,6 +167,7 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 
 	if err := s.antigravityClient.StreamGenerateContent(r.Context(), gemReq, upstream); err != nil {
 		logger.Get().Error().Err(err).Msg("StreamGenerateContent call failed")
+		s.recordUsage("/v1/chat/completions", req.Model, true, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())
 		http.Error(w, "Upstream streaming error", http.StatusInternalServerError)
 		return
 	}
@@ -214,6 +215,7 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 	}()
 
 	// Adapter: CloudCode SSE -> StreamChunk (model text, tool calls, usage, etc.)
+	var streamPromptTokens, streamCompletionTokens int
 	chunkIn := make(chan openai.StreamChunk, 32)
 	go func() {
 		defer close(chunkIn)
@@ -259,9 +261,15 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 				payload := map[string]interface{}{}
 				if v, ok := um["promptTokenCount"]; ok {
 					payload["inputTokens"] = v
+					if vi, ok := v.(float64); ok {
+						streamPromptTokens = int(vi)
+					}
 				}
 				if v, ok := um["candidatesTokenCount"]; ok {
 					payload["outputTokens"] = v
+					if vi, ok := v.(float64); ok {
+						streamCompletionTokens = int(vi)
+					}
 				}
 				chunkIn <- openai.StreamChunk{Type: "usage", Data: payload}
 			}
@@ -431,6 +439,8 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	s.recordUsage("/v1/chat/completions", req.Model, true, http.StatusOK, time.Since(startTime), streamPromptTokens, streamCompletionTokens, "")
+
 	logger.Get().Info().
 		Str("model", gemReq.Model).
 		Dur("total_duration", time.Since(startTime)).
@@ -458,6 +468,7 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 	resp, err := s.antigravityClient.GenerateContent(gemReq)
 	if err != nil {
 		logger.Get().Error().Err(err).Dur("api_call_duration", time.Since(apiStart)).Msg("GenerateContent failed")
+		s.recordUsage("/v1/chat/completions", req.Model, false, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())
 		http.Error(w, "Error calling GenerateContent", http.StatusInternalServerError)
 		return
 	}
@@ -530,10 +541,10 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 	}
 
 	// Include usage if available
+	prompt := 0
+	comp := 0
 	if resp != nil && resp.Response != nil {
 		if um, ok := resp.Response["usageMetadata"].(map[string]interface{}); ok {
-			prompt := 0
-			comp := 0
 			if v, ok := um["promptTokenCount"].(float64); ok {
 				prompt = int(v)
 			}
@@ -547,6 +558,7 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 			}
 		}
 	}
+	s.recordUsage("/v1/chat/completions", req.Model, false, http.StatusOK, time.Since(startTime), prompt, comp, "")
 
 	// Write response
 	w.Header().Set("Content-Type", "application/json")

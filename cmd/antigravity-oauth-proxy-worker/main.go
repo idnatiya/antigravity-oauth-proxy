@@ -11,6 +11,7 @@ import (
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/project"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/server"
+	"github.com/dvcrn/antigravity-oauth-proxy/internal/usage"
 	"github.com/syumai/workers"
 )
 
@@ -59,8 +60,8 @@ func init() {
 		logger.Get().Info().Str("project_id", projectID).Msg("Using project ID for CloudCode requests")
 	}
 
-	// Create server with provider and project ID
-	srv = server.NewServer(provider, projectID, server.WithGoogleAuth(provider))
+	// Create server with provider, project ID, google auth, and usage store
+	srv = server.NewServer(provider, projectID, server.WithGoogleAuth(provider), server.WithUsageStore(usage.NewMemoryStore()))
 
 	// Load OAuth credentials on startup
 	if err := srv.LoadCredentials(false); err != nil {

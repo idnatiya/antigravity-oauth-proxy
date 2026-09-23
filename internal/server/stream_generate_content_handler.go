@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/antigravity"
@@ -118,9 +119,11 @@ func (s *Server) handleGenerateContent(w http.ResponseWriter, r *http.Request, m
 			}
 			w.WriteHeader(upstreamErr.StatusCode)
 			_, _ = w.Write(upstreamErr.Body)
+			s.recordUsage(r.URL.Path, model, false, upstreamErr.StatusCode, time.Since(startTime), 0, 0, err.Error())
 			return
 		}
 
+		s.recordUsage(r.URL.Path, model, false, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())
 		http.Error(w, fmt.Sprintf("Error calling GenerateContent: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -128,6 +131,20 @@ func (s *Server) handleGenerateContent(w http.ResponseWriter, r *http.Request, m
 	logger.Get().Debug().
 		Dur("api_call_duration", time.Since(apiCallStart)).
 		Msg("GenerateContent successful")
+
+	promptTokens := 0
+	completionTokens := 0
+	if resp != nil && resp.Response != nil {
+		if um, ok := resp.Response["usageMetadata"].(map[string]interface{}); ok {
+			if v, ok := um["promptTokenCount"].(float64); ok {
+				promptTokens = int(v)
+			}
+			if v, ok := um["candidatesTokenCount"].(float64); ok {
+				completionTokens = int(v)
+			}
+		}
+	}
+	s.recordUsage(r.URL.Path, model, false, http.StatusOK, time.Since(startTime), promptTokens, completionTokens, "")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -258,9 +275,11 @@ func (s *Server) handleStreamGenerateContent(w http.ResponseWriter, r *http.Requ
 			}
 			w.WriteHeader(upstreamErr.StatusCode)
 			_, _ = w.Write(upstreamErr.Body)
+			s.recordUsage(r.URL.Path, model, true, upstreamErr.StatusCode, time.Since(startTime), 0, 0, err.Error())
 			return
 		}
 
+		s.recordUsage(r.URL.Path, model, true, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())
 		http.Error(w, fmt.Sprintf("Error calling StreamGenerateContent: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -278,6 +297,8 @@ func (s *Server) handleStreamGenerateContent(w http.ResponseWriter, r *http.Requ
 		flusher = f
 		flusher.Flush()
 	}
+
+	var streamPromptTokens, streamCompletionTokens int
 
 	// Stream loop: transform data lines and forward to client
 	firstWrite := true
@@ -306,6 +327,24 @@ streamLoop:
 			// Transform CloudCode SSE line into standard Gemini format
 			transformed := TransformSSELine(line)
 
+			// Extract token counts if available
+			if strings.HasPrefix(transformed, "data: ") {
+				dataStr := strings.TrimSpace(strings.TrimPrefix(transformed, "data: "))
+				if strings.Contains(dataStr, "usageMetadata") {
+					var obj map[string]interface{}
+					if err := json.Unmarshal([]byte(dataStr), &obj); err == nil {
+						if um, ok := obj["usageMetadata"].(map[string]interface{}); ok {
+							if v, ok := um["promptTokenCount"].(float64); ok {
+								streamPromptTokens = int(v)
+							}
+							if v, ok := um["candidatesTokenCount"].(float64); ok {
+								streamCompletionTokens = int(v)
+							}
+						}
+					}
+				}
+			}
+
 			// Write transformed line and a newline; upstream blank lines will pass through too
 			if _, err := fmt.Fprintf(w, "%s\n", transformed); err != nil {
 				logger.Get().Error().Err(err).Msg("Error writing SSE line to client")
@@ -331,6 +370,8 @@ streamLoop:
 			}
 		}
 	}
+
+	s.recordUsage(r.URL.Path, model, true, http.StatusOK, time.Since(startTime), streamPromptTokens, streamCompletionTokens, "")
 
 	logger.Get().Info().
 		Str("model", resolvedModel).

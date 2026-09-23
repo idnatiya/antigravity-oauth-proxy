@@ -9,6 +9,7 @@ import (
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/project"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/server"
+	"github.com/dvcrn/antigravity-oauth-proxy/internal/usage"
 )
 
 func main() {
@@ -62,8 +63,20 @@ func main() {
 		logger.Get().Fatal().Err(err).Msg("Failed to discover project ID")
 	}
 
-	// Create server with provider and project ID
-	srv := server.NewServer(provider, projectID)
+	// Initialize SQLite usage and telemetry store
+	usageStore, err := usage.NewSQLiteStore("")
+	if err != nil {
+		logger.Get().Warn().Err(err).Msg("Failed to initialize SQLite usage store; proceeding without persistent telemetry")
+	} else {
+		defer usageStore.Close()
+	}
+
+	// Create server with provider, project ID, and usage store
+	srvOpts := []server.Option{}
+	if usageStore != nil {
+		srvOpts = append(srvOpts, server.WithUsageStore(usageStore))
+	}
+	srv := server.NewServer(provider, projectID, srvOpts...)
 
 	// Start server
 	if err := srv.Start(":" + port); err != nil {
