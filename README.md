@@ -31,18 +31,45 @@ Install the proxy with npm:
 npm install -g antigravity-oauth-proxy
 ```
 
-Other installation options:
+
+### Install via Docker
+
+**Using Docker Compose (Recommended):**
+```bash
+
+
+
+# 1. Login OAuth (one-time setup)
+docker compose run --rm auth
+
+
+# 2. Start the proxy in the background
+docker compose up -d
+```
+
+**Using Docker CLI:**
+```bash
+# 1. Build the image
+docker build -t antigravity-oauth-proxy .
+
+
+
+# 2. Login OAuth (one-time setup)
+docker run -it --rm \
+  -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy \
+  --entrypoint /app/auth \
+  antigravity-oauth-proxy -no-browser
+
+# 3. Start the proxy
+docker run -d -p 9878:9878 \
+  -e ADMIN_API_KEY="replace-with-a-long-random-value" \
+  -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw \
+  antigravity-oauth-proxy
+```
+
+### Other installation options
 
 ```bash
-# Docker Compose
-docker compose run --rm auth  # Login OAuth (one-time)
-docker compose up -d           # Start proxy
-
-# Docker CLI
-docker build -t antigravity-oauth-proxy .
-docker run -it --rm -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy --entrypoint /app/auth antigravity-oauth-proxy -no-browser  # Login OAuth
-docker run -d -p 9878:9878 -e ADMIN_API_KEY="replace-with-a-long-random-value" -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw antigravity-oauth-proxy
-
 # mise
 mise use -g go:github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@latest
 
