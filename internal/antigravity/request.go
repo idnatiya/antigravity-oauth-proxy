@@ -485,10 +485,6 @@ func ensureThoughtSignatures(contents []Content, model string) int {
 			}
 
 			sig := part.GetThoughtSignature()
-			if sig == "" && part.FunctionCall != nil {
-				sig = part.FunctionCall.GetThoughtSignature()
-			}
-
 			if strings.TrimSpace(sig) == "" {
 				sig = DefaultBypassThoughtSignature
 				missing++

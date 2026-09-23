@@ -462,27 +462,35 @@ func TestEnsureThoughtSignatures(t *testing.T) {
 		if modelPart.ThoughtSignature != DefaultBypassThoughtSignature {
 			t.Fatalf("ThoughtSignature = %q, want %q", modelPart.ThoughtSignature, DefaultBypassThoughtSignature)
 		}
-		if modelPart.ThoughtSignatureSnake != DefaultBypassThoughtSignature {
-			t.Fatalf("ThoughtSignatureSnake = %q, want %q", modelPart.ThoughtSignatureSnake, DefaultBypassThoughtSignature)
-		}
-		if modelPart.FunctionCall.ThoughtSignature != DefaultBypassThoughtSignature {
-			t.Fatalf("FunctionCall.ThoughtSignature = %q, want %q", modelPart.FunctionCall.ThoughtSignature, DefaultBypassThoughtSignature)
-		}
-		if modelPart.FunctionCall.ThoughtSignatureSnake != DefaultBypassThoughtSignature {
-			t.Fatalf("FunctionCall.ThoughtSignatureSnake = %q, want %q", modelPart.FunctionCall.ThoughtSignatureSnake, DefaultBypassThoughtSignature)
-		}
 
-		// Verify serialized JSON contains both thoughtSignature and thought_signature
+		// Verify serialized JSON contains thoughtSignature on part, but NOT inside functionCall
 		jsonBytes, err := json.Marshal(req.Request.Contents[1])
 		if err != nil {
 			t.Fatalf("json.Marshal failed: %v", err)
 		}
 		jsonStr := string(jsonBytes)
 		if !strings.Contains(jsonStr, `"thoughtSignature":"skip_thought_signature_validator"`) {
-			t.Fatalf("JSON missing camelCase thoughtSignature: %s", jsonStr)
+			t.Fatalf("JSON missing thoughtSignature on ContentPart: %s", jsonStr)
 		}
-		if !strings.Contains(jsonStr, `"thought_signature":"skip_thought_signature_validator"`) {
-			t.Fatalf("JSON missing snake_case thought_signature: %s", jsonStr)
+
+		// Ensure functionCall object only contains id, name, args
+		var partObj map[string]interface{}
+		var contentObj struct {
+			Parts []map[string]interface{} `json:"parts"`
+		}
+		if err := json.Unmarshal(jsonBytes, &contentObj); err != nil {
+			t.Fatalf("json.Unmarshal failed: %v", err)
+		}
+		partObj = contentObj.Parts[0]
+		fcObj, ok := partObj["functionCall"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("missing functionCall in JSON: %s", jsonStr)
+		}
+		if _, exists := fcObj["thoughtSignature"]; exists {
+			t.Fatalf("functionCall must not contain thoughtSignature field: %#v", fcObj)
+		}
+		if _, exists := fcObj["thought_signature"]; exists {
+			t.Fatalf("functionCall must not contain thought_signature field: %#v", fcObj)
 		}
 	})
 
@@ -514,11 +522,16 @@ func TestEnsureThoughtSignatures(t *testing.T) {
 		if modelPart.ThoughtSignature != existingSig {
 			t.Fatalf("ThoughtSignature = %q, want %q", modelPart.ThoughtSignature, existingSig)
 		}
-		if modelPart.ThoughtSignatureSnake != existingSig {
-			t.Fatalf("ThoughtSignatureSnake = %q, want %q", modelPart.ThoughtSignatureSnake, existingSig)
+	})
+
+	t.Run("unmarshals snake_case thought_signature from client into ThoughtSignature", func(t *testing.T) {
+		jsonInput := `{"role":"model","parts":[{"thought_signature":"incoming_sig","functionCall":{"name":"test"}}]}`
+		var c Content
+		if err := json.Unmarshal([]byte(jsonInput), &c); err != nil {
+			t.Fatalf("Unmarshal failed: %v", err)
 		}
-		if modelPart.FunctionCall.ThoughtSignature != existingSig {
-			t.Fatalf("FunctionCall.ThoughtSignature = %q, want %q", modelPart.FunctionCall.ThoughtSignature, existingSig)
+		if c.Parts[0].ThoughtSignature != "incoming_sig" {
+			t.Fatalf("ThoughtSignature = %q, want incoming_sig", c.Parts[0].ThoughtSignature)
 		}
 	})
 }

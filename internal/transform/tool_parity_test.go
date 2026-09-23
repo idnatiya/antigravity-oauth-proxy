@@ -146,10 +146,7 @@ func TestToolThoughtSignatureRestoration(t *testing.T) {
 
 	modelPart := contents[1].Parts[0]
 	assert.Equal(t, "sig_abc_xyz", modelPart.ThoughtSignature)
-	assert.Equal(t, "sig_abc_xyz", modelPart.ThoughtSignatureSnake)
 	assert.Equal(t, "call_12345", modelPart.FunctionCall.ID)
-	assert.Equal(t, "sig_abc_xyz", modelPart.FunctionCall.ThoughtSignature)
-	assert.Equal(t, "sig_abc_xyz", modelPart.FunctionCall.ThoughtSignatureSnake)
 
 	toolRespPart := contents[2].Parts[0]
 	assert.Equal(t, "call_12345", toolRespPart.FunctionResponse.ID)
