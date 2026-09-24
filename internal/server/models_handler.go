@@ -2,11 +2,13 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/dvcrn/antigravity-oauth-proxy/internal/antigravity"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 )
 
@@ -38,7 +40,10 @@ func (s *Server) modelsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := s.modelsClient().FetchAvailableModels(r.Context())
+	data, err := s.fetchModels(r.Context())
+	if errors.Is(err, errNoAccounts) {
+		data, err = &antigravity.FetchAvailableModelsResponse{}, nil
+	}
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to fetch available models")
 		writeAPIError(w, http.StatusInternalServerError, err.Error())

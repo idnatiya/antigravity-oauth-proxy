@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { Users, Plus, Trash2, CheckCircle2, AlertCircle, ExternalLink } from '@lucide/vue'
+import { Users, Plus, LogOut, CheckCircle2, AlertCircle, ExternalLink } from '@lucide/vue'
 import { apiClient } from '@/services/apiClient'
+import { useUsageStore } from '@/stores/usageStore'
+
+const usageStore = useUsageStore()
 
 interface Account {
   id: string
@@ -41,6 +44,7 @@ async function load() {
   const res = await apiClient.get<{ accounts: Account[]; webLoginEnabled: boolean }>('/api/accounts')
   accounts.value = res.accounts || []
   webLoginEnabled.value = res.webLoginEnabled
+  usageStore.fetchStats().catch(() => {}) // keep sidebar account count in sync
 }
 
 function startLogin() {
@@ -62,7 +66,7 @@ function completeLogin() {
 }
 
 function removeAccount(id: string) {
-  if (!window.confirm(`Remove ${id}? Its stored tokens will be deleted.`)) return
+  if (!window.confirm(`Log out ${id}? Its stored tokens will be deleted from this server.`)) return
   return run(async () => {
     await apiClient.delete('/api/accounts', { params: { id } })
     await load()
@@ -142,7 +146,7 @@ onMounted(() => run(load))
     <div class="rounded-xl bg-[#202227] border border-[#2c2e36] divide-y divide-[#2a2d34]">
       <div v-if="!accounts.length" class="p-5 text-xs text-zinc-500 flex items-center gap-2">
         <Users class="h-4 w-4" />
-        No accounts configured.
+        No accounts. Add one to start serving requests.
       </div>
       <div v-for="(acc, i) in accounts" :key="acc.id" class="p-4 flex items-center gap-4 text-xs">
         <span class="w-5 text-zinc-500 font-mono">{{ i + 1 }}</span>
@@ -162,10 +166,10 @@ onMounted(() => run(load))
           v-if="acc.removable"
           :disabled="busy"
           @click="removeAccount(acc.id)"
-          title="Remove account"
+          title="Log out"
           class="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 cursor-pointer"
         >
-          <Trash2 class="h-4 w-4" />
+          <LogOut class="h-4 w-4" />
         </button>
       </div>
     </div>

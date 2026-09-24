@@ -137,7 +137,7 @@ func (f *FileProvider) GetCredentials() (*OAuthCredentials, error) {
 		return creds, nil
 	}
 
-	return nil, fmt.Errorf("OAuth credentials not found. Please set CLOUDCODE_OAUTH_CREDS_PATH, place oauth_creds.json in %s, or set CLOUDCODE_OAUTH_CREDS", f.filePath)
+	return nil, fmt.Errorf("OAuth credentials not found. Please set CLOUDCODE_OAUTH_CREDS_PATH, place oauth_creds.json in %s, or set CLOUDCODE_OAUTH_CREDS: %w", f.filePath, os.ErrNotExist)
 }
 
 // SaveCredentials saves credentials to file if file path is set

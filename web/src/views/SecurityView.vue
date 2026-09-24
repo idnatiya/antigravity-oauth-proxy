@@ -105,7 +105,7 @@ async function handleChangePassword() {
         <div class="space-y-2 pt-2 border-t border-[#2a2d34] text-xs">
           <div class="flex justify-between py-1">
             <span class="text-zinc-500">Project ID</span>
-            <span class="text-blue-400 font-mono">{{ usageStore.account?.project_id || 'aicode-consumers' }}</span>
+            <span class="text-blue-400 font-mono">{{ usageStore.account?.project_id || '—' }}</span>
           </div>
           <div class="flex justify-between py-1">
             <span class="text-zinc-500">Credential Store</span>

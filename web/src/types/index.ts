@@ -35,9 +35,10 @@ export interface UsageStats {
 }
 
 export interface AccountInfo {
-  project_id: string
+  project_id?: string
   provider: string
-  token_valid_seconds?: number
+  accounts_ready: number
+  accounts_total: number
 }
 
 export interface StatsResponse {

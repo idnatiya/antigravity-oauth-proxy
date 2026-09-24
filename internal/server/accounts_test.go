@@ -2,10 +2,13 @@ package server
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/antigravity"
+	"github.com/dvcrn/antigravity-oauth-proxy/internal/credentials"
 )
 
 func TestAccountPoolFallsBackOnQuota(t *testing.T) {
@@ -77,5 +80,29 @@ func TestParseRetryDelay(t *testing.T) {
 		if got := parseRetryDelay([]byte(body)); got != want {
 			t.Errorf("parseRetryDelay(%q) = %v, want %v", body, got, want)
 		}
+	}
+}
+
+func TestAccountPoolLogoutDefaultAccount(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "oauth_creds.json")
+	if err := os.WriteFile(path, []byte(`{"access_token":"x"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pool := &AccountPool{now: time.Now}
+	pool.AddDefault(credentials.NewFileProviderAt(path), "p")
+	if views := pool.list(); len(views) != 1 || !views[0].Removable {
+		t.Fatalf("default file account should be removable: %+v", views)
+	}
+	if err := pool.remove("default"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("credentials file still exists: %v", err)
+	}
+
+	var upstreamErr *antigravity.UpstreamError
+	err := pool.try(&antigravity.GenerateContentRequest{}, nil)
+	if !errors.As(err, &upstreamErr) || upstreamErr.StatusCode != 503 {
+		t.Fatalf("expected 503 with no accounts, got %v", err)
 	}
 }

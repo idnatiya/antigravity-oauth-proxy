@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -102,7 +103,7 @@ func (s *Server) openAIChatCompletionsHandler(w http.ResponseWriter, r *http.Req
 		Msg("Tool result message count")
 
 	// Check if model exists, if not fallback to default agent model
-	data, err := s.modelsClient().FetchAvailableModels(r.Context())
+	data, err := s.fetchModels(r.Context())
 	if err == nil {
 		gemReqPre, errPre := transform.ToGeminiRequest(&req, s.projectID)
 		preReq := antigravity.GeminiInternalRequest{}
@@ -169,8 +170,9 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 
 	if err := s.stream(r.Context(), gemReq, upstream); err != nil {
 		logger.Get().Error().Err(err).Msg("StreamGenerateContent call failed")
-		s.recordUsage("/v1/chat/completions", req.Model, true, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())
-		http.Error(w, "Upstream streaming error", http.StatusInternalServerError)
+		status, msg := upstreamErrorStatus(err, "Upstream streaming error")
+		s.recordUsage("/v1/chat/completions", req.Model, true, status, time.Since(startTime), 0, 0, err.Error())
+		writeAPIError(w, status, msg)
 		return
 	}
 	logger.Get().Info().Msg("Upstream StreamGenerateContent started")
@@ -484,8 +486,9 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 	resp, err := s.generate(gemReq)
 	if err != nil {
 		logger.Get().Error().Err(err).Dur("api_call_duration", time.Since(apiStart)).Msg("GenerateContent failed")
-		s.recordUsage("/v1/chat/completions", req.Model, false, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())
-		http.Error(w, "Error calling GenerateContent", http.StatusInternalServerError)
+		status, msg := upstreamErrorStatus(err, "Error calling GenerateContent")
+		s.recordUsage("/v1/chat/completions", req.Model, false, status, time.Since(startTime), 0, 0, err.Error())
+		writeAPIError(w, status, msg)
 		return
 	}
 
@@ -651,4 +654,22 @@ func extractThoughtSignature(cand map[string]interface{}, part map[string]interf
 		}
 	}
 	return ""
+}
+
+// upstreamErrorStatus keeps the upstream status (e.g. 429 when every account is
+// out of quota) so OpenAI clients can back off and retry.
+func upstreamErrorStatus(err error, fallback string) (int, string) {
+	var upstreamErr *antigravity.UpstreamError
+	if !errors.As(err, &upstreamErr) || upstreamErr.StatusCode < 400 {
+		return http.StatusInternalServerError, fallback
+	}
+	var body struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(upstreamErr.Body, &body) == nil && body.Error.Message != "" {
+		return upstreamErr.StatusCode, body.Error.Message
+	}
+	return upstreamErr.StatusCode, fallback
 }

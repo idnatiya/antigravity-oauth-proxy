@@ -17,13 +17,11 @@ const navItems = [
   { name: 'Security', to: '/security', icon: ShieldCheck },
 ]
 
-const tokenValidText = computed(() => {
-  const sec = usageStore.account?.token_valid_seconds
-  if (sec === undefined) return 'Active'
-  if (sec <= 0) return 'Expired'
-  const hours = Math.floor(sec / 3600)
-  const mins = Math.floor((sec % 3600) / 60)
-  return `${hours}h ${mins}m`
+const accountsText = computed(() => {
+  const acc = usageStore.account
+  if (!acc) return '…'
+  if (!acc.accounts_total) return 'None'
+  return `${acc.accounts_ready}/${acc.accounts_total} ready`
 })
 </script>
 
@@ -65,10 +63,13 @@ const tokenValidText = computed(() => {
     <div class="p-4 border-t border-[#24262e] bg-[#0d0e11] space-y-3">
       <div class="flex items-center justify-between text-xs text-zinc-400">
         <span class="flex items-center gap-1.5">
-          <Radio class="h-3 w-3 text-emerald-400 animate-pulse" />
-          <span>OAuth Session</span>
+          <Radio
+            class="h-3 w-3"
+            :class="usageStore.account?.accounts_ready ? 'text-emerald-400 animate-pulse' : 'text-amber-400'"
+          />
+          <span>Google Accounts</span>
         </span>
-        <span class="font-mono text-zinc-300 font-medium">{{ tokenValidText }}</span>
+        <RouterLink to="/accounts" class="font-mono text-zinc-300 font-medium hover:text-white">{{ accountsText }}</RouterLink>
       </div>
 
       <div class="pt-2 border-t border-[#1e2027] flex items-center justify-between text-xs">

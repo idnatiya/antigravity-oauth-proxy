@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/usage"
@@ -30,36 +29,28 @@ func (s *Server) handleUsageStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ready, total := s.accounts.ready()
 	accountInfo := map[string]interface{}{
-		"project_id": s.projectID,
-		"provider":   s.provider.Name(),
+		"provider":       s.provider.Name(),
+		"accounts_ready": ready,
+		"accounts_total": total,
+	}
+	if accounts := s.accounts.candidates(); len(accounts) > 0 {
+		accountInfo["project_id"] = accounts[0].projectID
 	}
 
-	if s.antigravityClient != nil {
-		if modelsResp, err := s.modelsClient().FetchAvailableModels(r.Context()); err == nil && modelsResp != nil {
-			quotas := make(map[string]interface{})
-			for mID, mData := range modelsResp.Models {
-				if len(mData.QuotaInfo) > 0 {
-					var q interface{}
-					if json.Unmarshal(mData.QuotaInfo, &q) == nil {
-						quotas[mID] = q
-					}
+	if modelsResp, err := s.fetchModels(r.Context()); err == nil && modelsResp != nil {
+		quotas := make(map[string]interface{})
+		for mID, mData := range modelsResp.Models {
+			if len(mData.QuotaInfo) > 0 {
+				var q interface{}
+				if json.Unmarshal(mData.QuotaInfo, &q) == nil {
+					quotas[mID] = q
 				}
 			}
-			if len(quotas) > 0 {
-				accountInfo["quotas"] = quotas
-			}
 		}
-	}
-
-	if creds, err := s.provider.GetCredentials(); err == nil && creds != nil {
-		if creds.ExpiryDate > 0 {
-			nowMilli := time.Now().UnixMilli()
-			diffSec := (creds.ExpiryDate - nowMilli) / 1000
-			if diffSec < 0 {
-				diffSec = 0
-			}
-			accountInfo["token_valid_seconds"] = diffSec
+		if len(quotas) > 0 {
+			accountInfo["quotas"] = quotas
 		}
 	}
 

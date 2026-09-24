@@ -26,7 +26,12 @@ const (
 )
 
 var (
-	errNoAccounts     = errors.New("no Google accounts configured")
+	// errNoAccounts is an UpstreamError so handlers forward it like any upstream failure.
+	errNoAccounts = &antigravity.UpstreamError{
+		StatusCode:  http.StatusServiceUnavailable,
+		ContentType: "application/json",
+		Body:        []byte(`{"error":{"code":503,"message":"No Google account available. Add one at /dashboard/accounts","status":"UNAVAILABLE"}}`),
+	}
 	retryDelayPattern = regexp.MustCompile(`"(?:retryDelay|quotaResetDelay)"\s*:\s*"([^"]+)"`)
 )
 
@@ -83,6 +88,9 @@ func (p *AccountPool) AddDefault(provider credentials.CredentialsProvider, proje
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	a := &account{id: "default", projectID: projectID, client: antigravity.NewClient(provider)}
+	if fp, ok := provider.(*credentials.FileProvider); ok {
+		a.path = fp.Path() // "" when credentials come from CLOUDCODE_OAUTH_CREDS
+	}
 	p.accounts = append([]*account{a}, p.accounts...)
 }
 
@@ -159,11 +167,17 @@ func parseRetryDelay(body []byte) time.Duration {
 	return defaultQuotaCooldown
 }
 
-func (p *AccountPool) modelsClient() *antigravity.Client {
-	if accounts := p.candidates(); len(accounts) > 0 {
-		return accounts[0].client
+// ready returns how many accounts can serve requests now, and the total.
+func (p *AccountPool) ready() (ready, total int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	now := p.now()
+	for _, a := range p.accounts {
+		if !now.Before(a.coolUntil) {
+			ready++
+		}
 	}
-	return nil
+	return ready, len(p.accounts)
 }
 
 type accountView struct {
@@ -190,6 +204,9 @@ func (p *AccountPool) list() []accountView {
 	return views
 }
 
+// remove logs an account out by deleting its local token file. The token is
+// deliberately not revoked at Google: it belongs to Antigravity's OAuth client,
+// so revoking would also sign the user out of the Antigravity IDE.
 func (p *AccountPool) remove(id string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -198,7 +215,7 @@ func (p *AccountPool) remove(id string) error {
 			continue
 		}
 		if a.path == "" {
-			return errors.New("the default account cannot be removed here")
+			return errors.New("account is configured via environment and cannot be logged out here")
 		}
 		if err := os.Remove(a.path); err != nil && !os.IsNotExist(err) {
 			return err
@@ -299,11 +316,13 @@ func (s *Server) stream(ctx context.Context, req *antigravity.GenerateContentReq
 	})
 }
 
-func (s *Server) modelsClient() *antigravity.Client {
-	if c := s.accounts.modelsClient(); c != nil {
-		return c
+// fetchModels lists models using the first ready account.
+func (s *Server) fetchModels(ctx context.Context) (*antigravity.FetchAvailableModelsResponse, error) {
+	accounts := s.accounts.candidates()
+	if len(accounts) == 0 {
+		return nil, errNoAccounts
 	}
-	return s.antigravityClient
+	return accounts[0].client.FetchAvailableModels(ctx)
 }
 
 func (s *Server) accountsHandler(w http.ResponseWriter, r *http.Request) {

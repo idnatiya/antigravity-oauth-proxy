@@ -185,7 +185,7 @@ func (s *Server) mcpAskGemini(ctx context.Context, in askGeminiInput) (askGemini
 }
 
 func (s *Server) mcpAskGeminiModels(ctx context.Context, _ askGeminiModelsInput) (askGeminiModelsOutput, error) {
-	data, err := s.modelsClient().FetchAvailableModels(ctx)
+	data, err := s.fetchModels(ctx)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("MCP ask_gemini_models failed to fetch available models")
 		return askGeminiModelsOutput{}, fmt.Errorf("failed to fetch available models: %w", err)

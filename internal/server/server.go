@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -93,7 +95,9 @@ func NewServer(provider credentials.CredentialsProvider, projectID string, optio
 // Start launches the proxy server with the configured provider
 func (s *Server) Start(addr string) error {
 	// Load OAuth credentials on startup
-	if err := s.LoadCredentials(false); err != nil {
+	if err := s.LoadCredentials(false); errors.Is(err, fs.ErrNotExist) {
+		logger.Get().Info().Msg("No default OAuth credentials; add Google accounts from the dashboard")
+	} else if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to load OAuth credentials")
 		logger.Get().Warn().Msg("The proxy will run but authentication will fail without valid credentials")
 	}
@@ -155,7 +159,7 @@ func (s *Server) startTokenRefreshLoop() {
 
 		for range ticker.C {
 			logger.Get().Debug().Msg("Running periodic token refresh check...")
-			if err := s.LoadCredentials(true); err != nil {
+			if err := s.LoadCredentials(true); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				logger.Get().Error().Err(err).Msg("Error during periodic token refresh")
 			}
 		}
