@@ -7,7 +7,6 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/credentials"
@@ -142,18 +141,16 @@ func (s *Server) googleAuthRequestAllowed(w http.ResponseWriter, r *http.Request
 		writeAdminError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return false
 	}
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return true
-	}
-	// Compare hosts only: behind a TLS-terminating reverse proxy the request
-	// arrives as plain HTTP while the browser Origin is https.
-	if u, err := url.Parse(origin); err != nil || u.Host != r.Host {
+	// Trusts the browser's Sec-Fetch-Site rather than comparing Origin with
+	// Host, which breaks when a reverse proxy or the Vite dev server rewrites Host.
+	if err := crossOriginProtection.Check(r); err != nil {
 		writeAdminError(w, "Origin is not allowed", http.StatusForbidden)
 		return false
 	}
 	return true
 }
+
+var crossOriginProtection = http.NewCrossOriginProtection()
 
 func requireJSONContentType(w http.ResponseWriter, r *http.Request) bool {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))

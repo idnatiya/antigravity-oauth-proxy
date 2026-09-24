@@ -110,3 +110,28 @@ func performGoogleAdminRequest(server http.Handler, method, target, body, conten
 	server.ServeHTTP(response, request)
 	return response
 }
+
+func TestGoogleAuthOriginCheckBehindHostRewrite(t *testing.T) {
+	t.Setenv("ADMIN_API_KEY", googleAuthTestAdminKey)
+	store := &googleAuthTestStore{}
+	server := NewServer(store, "test-project", WithGoogleAuth(store))
+
+	cases := []struct {
+		name, secFetchSite string
+		want               int
+	}{
+		{"same-origin behind proxy", "same-origin", http.StatusOK},
+		{"cross-site", "cross-site", http.StatusForbidden},
+	}
+	for _, tc := range cases {
+		request := httptest.NewRequest(http.MethodPost, "http://internal:9878/admin/auth/start", nil)
+		request.Header.Set("Authorization", "Bearer "+googleAuthTestAdminKey)
+		request.Header.Set("Origin", "https://public.example")
+		request.Header.Set("Sec-Fetch-Site", tc.secFetchSite)
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		if response.Code != tc.want {
+			t.Errorf("%s: status = %d, want %d, body = %s", tc.name, response.Code, tc.want, response.Body.String())
+		}
+	}
+}
