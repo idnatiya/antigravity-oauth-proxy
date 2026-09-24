@@ -25,6 +25,13 @@ type UpstreamError struct {
 	Endpoint    string
 }
 
+// CredentialsError marks failures to obtain or refresh the OAuth token, as
+// opposed to network or upstream errors.
+type CredentialsError struct{ Err error }
+
+func (e *CredentialsError) Error() string { return e.Err.Error() }
+func (e *CredentialsError) Unwrap() error { return e.Err }
+
 func is404Error(err error) bool {
 	var upstreamErr *UpstreamError
 	if errors.As(err, &upstreamErr) {
@@ -72,11 +79,11 @@ func NewClient(provider credentials.CredentialsProvider) *Client {
 func (c *Client) doRequest(ctx context.Context, method string, url string, body []byte, accept string) (*http.Response, error) {
 	creds, err := c.getValidCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get credentials: %w", err)
+		return nil, &CredentialsError{fmt.Errorf("unable to get credentials: %w", err)}
 	}
 
 	if creds.AccessToken == "" {
-		return nil, fmt.Errorf("access token is empty")
+		return nil, &CredentialsError{fmt.Errorf("access token is empty")}
 	}
 
 	resp, err := c.doRequestWithToken(ctx, method, url, body, accept, creds.AccessToken)
@@ -90,12 +97,12 @@ func (c *Client) doRequest(ctx context.Context, method string, url string, body 
 	resp.Body.Close()
 
 	if err := c.provider.RefreshToken(); err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %w", err)
+		return nil, &CredentialsError{fmt.Errorf("failed to refresh token: %w", err)}
 	}
 
 	refreshedCreds, err := c.provider.GetCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("failed to reload credentials after refresh: %w", err)
+		return nil, &CredentialsError{fmt.Errorf("failed to reload credentials after refresh: %w", err)}
 	}
 
 	return c.doRequestWithToken(ctx, method, url, body, accept, refreshedCreds.AccessToken)

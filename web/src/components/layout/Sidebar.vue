@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Radio, Sparkles } from '@lucide/vue'
+import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Radio, Sparkles, Users } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsageStore } from '@/stores/usageStore'
 
@@ -13,6 +13,7 @@ const navItems = [
   { name: 'Overview', to: '/overview', icon: LayoutDashboard },
   { name: 'Requests', to: '/requests', icon: ListFilter },
   { name: 'Models', to: '/models', icon: Cpu },
+  { name: 'Accounts', to: '/accounts', icon: Users },
   { name: 'Security', to: '/security', icon: ShieldCheck },
 ]
 

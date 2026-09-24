@@ -55,13 +55,15 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
     let errorMsg = `HTTP Error ${response.status}: ${response.statusText}`
     let errorData: unknown
 
+    const text = await response.text()
     try {
-      errorData = await response.json()
+      errorData = JSON.parse(text)
       if (typeof errorData === 'object' && errorData !== null && 'error' in errorData) {
         errorMsg = String((errorData as { error: unknown }).error)
       }
     } catch {
-      // response is not JSON
+      // plain-text error body (e.g. from http.Error)
+      if (text.trim()) errorMsg = text.trim()
     }
 
     throw new ApiError(errorMsg, response.status, errorData)

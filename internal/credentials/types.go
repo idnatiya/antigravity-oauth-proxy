@@ -8,6 +8,9 @@ type OAuthCredentials struct {
 	TokenType    string `json:"token_type"`
 	Scope        string `json:"scope,omitempty"`
 	IDToken      string `json:"id_token,omitempty"`
+	// Email and ProjectID are only set for accounts added through the account pool.
+	Email     string `json:"email,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
 }
 
 // TokenRefreshResponse represents the response from the token refresh endpoint

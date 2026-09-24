@@ -44,7 +44,7 @@ func (e *googleAuthUpstreamError) Unwrap() error {
 }
 
 type GoogleAuthStore interface {
-	credentials.CredentialsProvider
+	GetCredentials() (*credentials.OAuthCredentials, error)
 	LoadGoogleAuthSession() ([]byte, error)
 	SaveGoogleAuthSession([]byte) error
 	CompleteGoogleAuth(*credentials.OAuthCredentials) error

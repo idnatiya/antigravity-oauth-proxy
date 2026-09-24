@@ -36,7 +36,7 @@ func (s *Server) handleUsageStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.antigravityClient != nil {
-		if modelsResp, err := s.antigravityClient.FetchAvailableModels(r.Context()); err == nil && modelsResp != nil {
+		if modelsResp, err := s.modelsClient().FetchAvailableModels(r.Context()); err == nil && modelsResp != nil {
 			quotas := make(map[string]interface{})
 			for mID, mData := range modelsResp.Models {
 				if len(mData.QuotaInfo) > 0 {

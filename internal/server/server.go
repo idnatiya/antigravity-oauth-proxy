@@ -24,6 +24,7 @@ type Server struct {
 	mux               *http.ServeMux
 	antigravityClient *antigravity.Client
 	googleAuth        *GoogleAuth
+	accounts          *AccountPool
 	usageStore        usage.Store
 	authSecret        []byte
 }
@@ -33,6 +34,13 @@ type Option func(*Server)
 func WithGoogleAuth(store GoogleAuthStore) Option {
 	return func(s *Server) {
 		s.googleAuth = newGoogleAuth(store, s.httpClient)
+	}
+}
+
+// WithAccountPool serves requests from multiple Google accounts with quota fallback.
+func WithAccountPool(pool *AccountPool) Option {
+	return func(s *Server) {
+		s.accounts = pool
 	}
 }
 
@@ -59,6 +67,10 @@ func NewServer(provider credentials.CredentialsProvider, projectID string, optio
 	}
 	for _, option := range options {
 		option(s)
+	}
+	if s.accounts == nil {
+		s.accounts = &AccountPool{now: time.Now}
+		s.accounts.AddDefault(provider, projectID)
 	}
 
 	if len(s.authSecret) == 0 {
@@ -178,6 +190,11 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/api/auth/change-password", s.dashboardAuthMiddleware(s.handleChangePassword))
 
 	// Dashboard Usage Telemetry API
+	s.mux.HandleFunc("/api/accounts", s.dashboardAuthMiddleware(s.accountsHandler))
+	if s.googleAuth != nil {
+		s.mux.HandleFunc("/api/accounts/auth/start", s.dashboardAuthMiddleware(s.googleAuthStartHandler))
+		s.mux.HandleFunc("/api/accounts/auth/status", s.dashboardAuthMiddleware(s.googleAuthStatusHandler))
+	}
 	s.mux.HandleFunc("/api/usage/stats", s.dashboardAuthMiddleware(s.handleUsageStats))
 	s.mux.HandleFunc("/api/usage/requests", s.dashboardAuthMiddleware(s.handleUsageRequests))
 

@@ -103,7 +103,7 @@ func (s *Server) handleGenerateContent(w http.ResponseWriter, r *http.Request, m
 	}
 
 	apiCallStart := time.Now()
-	resp, err := s.antigravityClient.GenerateContent(genReq)
+	resp, err := s.generate(genReq)
 	if err != nil {
 		logger.Get().Error().
 			Err(err).
@@ -199,7 +199,7 @@ func (s *Server) handleStreamGenerateContent(w http.ResponseWriter, r *http.Requ
 	// Start upstream streaming and pipe raw lines
 	lines := make(chan string, 16)
 	apiCallStart := time.Now()
-	if err := s.antigravityClient.StreamGenerateContent(r.Context(), genReq, lines); err != nil {
+	if err := s.stream(r.Context(), genReq, lines); err != nil {
 		logger.Get().Error().
 			Err(err).
 			Str("model", resolvedModel).

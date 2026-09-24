@@ -102,7 +102,7 @@ func (s *Server) openAIChatCompletionsHandler(w http.ResponseWriter, r *http.Req
 		Msg("Tool result message count")
 
 	// Check if model exists, if not fallback to default agent model
-	data, err := s.antigravityClient.FetchAvailableModels(r.Context())
+	data, err := s.modelsClient().FetchAvailableModels(r.Context())
 	if err == nil {
 		gemReqPre, errPre := transform.ToGeminiRequest(&req, s.projectID)
 		preReq := antigravity.GeminiInternalRequest{}
@@ -167,7 +167,7 @@ func (s *Server) chatCompletionRequestStream(w http.ResponseWriter, r *http.Requ
 		Str("model", gemReq.Model).
 		Msg("Starting upstream StreamGenerateContent")
 
-	if err := s.antigravityClient.StreamGenerateContent(r.Context(), gemReq, upstream); err != nil {
+	if err := s.stream(r.Context(), gemReq, upstream); err != nil {
 		logger.Get().Error().Err(err).Msg("StreamGenerateContent call failed")
 		s.recordUsage("/v1/chat/completions", req.Model, true, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())
 		http.Error(w, "Upstream streaming error", http.StatusInternalServerError)
@@ -481,7 +481,7 @@ func (s *Server) chatCompletionRequest(w http.ResponseWriter, r *http.Request, r
 
 	// Call non-streaming GenerateContent
 	apiStart := time.Now()
-	resp, err := s.antigravityClient.GenerateContent(gemReq)
+	resp, err := s.generate(gemReq)
 	if err != nil {
 		logger.Get().Error().Err(err).Dur("api_call_duration", time.Since(apiStart)).Msg("GenerateContent failed")
 		s.recordUsage("/v1/chat/completions", req.Model, false, http.StatusInternalServerError, time.Since(startTime), 0, 0, err.Error())

@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/credentials"
@@ -145,15 +146,9 @@ func (s *Server) googleAuthRequestAllowed(w http.ResponseWriter, r *http.Request
 	if origin == "" {
 		return true
 	}
-	scheme := r.URL.Scheme
-	if scheme == "" {
-		if r.TLS != nil {
-			scheme = "https"
-		} else {
-			scheme = "http"
-		}
-	}
-	if origin != scheme+"://"+r.Host {
+	// Compare hosts only: behind a TLS-terminating reverse proxy the request
+	// arrives as plain HTTP while the browser Origin is https.
+	if u, err := url.Parse(origin); err != nil || u.Host != r.Host {
 		writeAdminError(w, "Origin is not allowed", http.StatusForbidden)
 		return false
 	}

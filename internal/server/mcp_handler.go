@@ -127,7 +127,7 @@ func (s *Server) mcpAskGemini(ctx context.Context, in askGeminiInput) (askGemini
 		Msg("MCP ask_gemini request received")
 
 	apiCallStart := time.Now()
-	resp, err := s.antigravityClient.GenerateContent(&antigravity.GenerateContentRequest{
+	resp, err := s.generate(&antigravity.GenerateContentRequest{
 		Model:   resolvedModel,
 		Project: s.projectID,
 		Request: request,
@@ -185,7 +185,7 @@ func (s *Server) mcpAskGemini(ctx context.Context, in askGeminiInput) (askGemini
 }
 
 func (s *Server) mcpAskGeminiModels(ctx context.Context, _ askGeminiModelsInput) (askGeminiModelsOutput, error) {
-	data, err := s.antigravityClient.FetchAvailableModels(ctx)
+	data, err := s.modelsClient().FetchAvailableModels(ctx)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("MCP ask_gemini_models failed to fetch available models")
 		return askGeminiModelsOutput{}, fmt.Errorf("failed to fetch available models: %w", err)

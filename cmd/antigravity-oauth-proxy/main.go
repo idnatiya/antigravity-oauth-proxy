@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/antigravity"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/credentials"
@@ -56,11 +57,16 @@ func main() {
 		}
 	}
 
-	// Discover project ID
+	// Additional accounts live next to oauth_creds.json; they can be added from the dashboard.
+	accounts := server.NewAccountPool(filepath.Join(filepath.Dir(provider.Path()), "accounts"))
+
+	// Discover project ID for the default account
 	envProjectID, _ := env.Get("CLOUDCODE_GCP_PROJECT_ID")
 	projectID, err := project.Discover(provider, envProjectID, loadAssistResponse)
 	if err != nil {
-		logger.Get().Fatal().Err(err).Msg("Failed to discover project ID")
+		logger.Get().Warn().Err(err).Msg("Default account unavailable; add accounts from the dashboard")
+	} else {
+		accounts.AddDefault(provider, projectID)
 	}
 
 	// Initialize SQLite usage and telemetry store
@@ -72,7 +78,7 @@ func main() {
 	}
 
 	// Create server with provider, project ID, and usage store
-	srvOpts := []server.Option{}
+	srvOpts := []server.Option{server.WithAccountPool(accounts), server.WithGoogleAuth(accounts)}
 	if usageStore != nil {
 		srvOpts = append(srvOpts, server.WithUsageStore(usageStore))
 	}

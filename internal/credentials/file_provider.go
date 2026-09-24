@@ -34,6 +34,16 @@ func NewFileProvider() (*FileProvider, error) {
 	return provider, nil
 }
 
+// NewFileProviderAt creates a file-based provider for an explicit path.
+func NewFileProviderAt(path string) *FileProvider {
+	return &FileProvider{filePath: path, httpClient: &http.Client{Timeout: 30 * time.Second}}
+}
+
+// Path returns the credentials file path ("" when using CLOUDCODE_OAUTH_CREDS).
+func (f *FileProvider) Path() string {
+	return f.filePath
+}
+
 // determineFilePath sets the file path based on environment variables or defaults
 func (f *FileProvider) determineFilePath() error {
 	// 1. Check for file path in environment variable

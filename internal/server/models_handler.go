@@ -11,12 +11,12 @@ import (
 )
 
 type openAIModel struct {
-	ID        string                 `json:"id"`
-	Object    string                 `json:"object"`
-	Created   int64                  `json:"created"`
-	OwnedBy   string                 `json:"owned_by"`
-	Name      string                 `json:"name,omitempty"`
-	QuotaInfo json.RawMessage        `json:"quotaInfo,omitempty"`
+	ID        string          `json:"id"`
+	Object    string          `json:"object"`
+	Created   int64           `json:"created"`
+	OwnedBy   string          `json:"owned_by"`
+	Name      string          `json:"name,omitempty"`
+	QuotaInfo json.RawMessage `json:"quotaInfo,omitempty"`
 }
 
 type openAIModelsListResponse struct {
@@ -38,7 +38,7 @@ func (s *Server) modelsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := s.antigravityClient.FetchAvailableModels(r.Context())
+	data, err := s.modelsClient().FetchAvailableModels(r.Context())
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to fetch available models")
 		writeAPIError(w, http.StatusInternalServerError, err.Error())
