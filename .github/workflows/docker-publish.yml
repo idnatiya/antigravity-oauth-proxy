@@ -54,3 +54,44 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          STATUS: ${{ job.status }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if [ "$STATUS" = "success" ]; then
+            ICON="✅"
+            STATE="SUCCESS"
+          else
+            ICON="❌"
+            STATE="FAILED"
+          fi
+          
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
+          
+          PAYLOAD=$(python3 -c "
+          import json, os, urllib.request
+          status = os.environ.get('STATE')
+          icon = os.environ.get('ICON')
+          repo = os.environ.get('REPO')
+          branch = os.environ.get('BRANCH')
+          msg = os.environ.get('FIRST_LINE')
+          run_url = os.environ.get('RUN_URL')
+          
+          text = f'''🚀 <b>Docker Build & Deploy: {status} {icon}</b>\n\n<b>Repo:</b> <code>{repo}</code>\n<b>Branch:</b> <code>{branch}</code>\n<b>Commit:</b> {msg}\n<a href=\"{run_url}\">View Action Details</a>'''
+          
+          body = json.dumps({
+              'chat_id': '${{ secrets.TELEGRAM_CHAT_ID }}',
+              'text': text,
+              'parse_mode': 'HTML',
+              'disable_web_page_preview': True
+          }).encode('utf-8')
+          
+          req = urllib.request.Request('https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage', data=body, headers={'Content-Type': 'application/json'})
+          urllib.request.urlopen(req)
+          ")
