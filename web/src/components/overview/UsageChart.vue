@@ -11,7 +11,6 @@ const chartPoints = computed(() => {
   const pts = props.points || []
   if (pts.length === 0) return []
   if (pts.length === 1) {
-    // Duplicate single point so SVG has a valid line and area to render
     return [
       { ...pts[0], time: pts[0].time + ' ' },
       { ...pts[0] }
@@ -22,7 +21,7 @@ const chartPoints = computed(() => {
 
 const maxVal = computed(() => {
   if (chartPoints.value.length === 0) return 10
-  const max = Math.max(...chartPoints.value.map(p => p.request_count))
+  const max = Math.max(...chartPoints.value.map(p => Number(p.request_count || (p as any).requests || 0)))
   return max > 0 ? Math.ceil(max * 1.2) : 10
 })
 
@@ -33,8 +32,9 @@ const svgPath = computed(() => {
   const height = 200
 
   const coords = pts.map((p, i) => {
+    const val = Number(p.request_count || (p as any).requests || 0)
     const x = (i / (pts.length - 1)) * width
-    const y = height - (p.request_count / maxVal.value) * (height - 30) - 15
+    const y = height - (val / maxVal.value) * (height - 30) - 15
     return { x, y }
   })
 

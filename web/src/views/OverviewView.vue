@@ -101,7 +101,7 @@ const formattedTokens = computed(() => {
 
     <!-- Usage Trends Chart -->
     <UsageChart
-      :points="usageStore.stats?.time_series"
+      :points="usageStore.stats?.time_series || (usageStore.stats as any)?.timeline"
       :loading="usageStore.loadingStats"
     />
 
