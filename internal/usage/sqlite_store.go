@@ -284,21 +284,29 @@ func (s *SQLiteStore) GetStats(ctx context.Context, timeRange string) (*StatsSum
 		COALESCE(SUM(total_tokens), 0)
 	FROM requests
 	`, bucketFormat)
+	var tArgs []interface{}
 	if !since.IsZero() {
 		timelineQuery += " WHERE timestamp >= ?"
+		tArgs = append(tArgs, since)
 	}
 	timelineQuery += fmt.Sprintf(" GROUP BY bucket ORDER BY bucket ASC")
 
-	tRows, err := s.db.QueryContext(ctx, timelineQuery, args...)
+	tRows, err := s.db.QueryContext(ctx, timelineQuery, tArgs...)
 	if err == nil {
 		defer tRows.Close()
 		for tRows.Next() {
 			var tp TimelinePoint
 			if err := tRows.Scan(&tp.TimeBucket, &tp.Requests, &tp.PromptTokens, &tp.CompletionTokens, &tp.TotalTokens); err == nil {
+				tp.Time = tp.TimeBucket
+				tp.RequestCount = tp.Requests
 				summary.Timeline = append(summary.Timeline, tp)
 			}
 		}
 	}
+
+	summary.ErrorRequests = summary.FailedRequests
+	summary.AvgLatencyMs = summary.AvgDurationMs
+	summary.TimeSeries = summary.Timeline
 
 	return summary, nil
 }

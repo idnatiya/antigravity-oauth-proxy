@@ -10,6 +10,13 @@ const props = defineProps<{
 const chartPoints = computed(() => {
   const pts = props.points || []
   if (pts.length === 0) return []
+  if (pts.length === 1) {
+    // Duplicate single point so SVG has a valid line and area to render
+    return [
+      { ...pts[0], time: pts[0].time + ' ' },
+      { ...pts[0] }
+    ]
+  }
   return pts
 })
 

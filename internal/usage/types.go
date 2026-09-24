@@ -35,7 +35,9 @@ type ModelUsage struct {
 // TimelinePoint represents an aggregated bucket of telemetry over time.
 type TimelinePoint struct {
 	TimeBucket       string `json:"time_bucket"`
+	Time             string `json:"time"`
 	Requests         int64  `json:"requests"`
+	RequestCount     int64  `json:"request_count"`
 	PromptTokens     int64  `json:"prompt_tokens"`
 	CompletionTokens int64  `json:"completion_tokens"`
 	TotalTokens      int64  `json:"total_tokens"`
@@ -46,13 +48,16 @@ type StatsSummary struct {
 	TotalRequests    int64           `json:"total_requests"`
 	SuccessRequests  int64           `json:"success_requests"`
 	FailedRequests   int64           `json:"failed_requests"`
+	ErrorRequests    int64           `json:"error_requests"`
 	PromptTokens     int64           `json:"prompt_tokens"`
 	CompletionTokens int64           `json:"completion_tokens"`
 	TotalTokens      int64           `json:"total_tokens"`
 	EstimatedSavings float64         `json:"estimated_savings"`
 	AvgDurationMs    float64         `json:"avg_duration_ms"`
+	AvgLatencyMs     float64         `json:"avg_latency_ms"`
 	ModelBreakdown   []ModelUsage    `json:"model_breakdown"`
 	Timeline         []TimelinePoint `json:"timeline"`
+	TimeSeries       []TimelinePoint `json:"time_series"`
 }
 
 // User represents a dashboard admin user account.
