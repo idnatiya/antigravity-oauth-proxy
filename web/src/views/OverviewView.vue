@@ -92,7 +92,7 @@ const formattedTokens = computed(() => {
 
       <StatCard
         title="Average Latency"
-        :value="`${usageStore.stats?.avg_latency_ms || 0} ms`"
+        :value="`${Math.round(usageStore.stats?.avg_latency_ms || 0)} ms`"
         subtitle="End-to-end response time"
         :icon="Zap"
         color="amber"

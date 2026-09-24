@@ -165,7 +165,7 @@ func (s *SQLiteStore) RecordRequest(ctx context.Context, req *RequestRecord) err
 
 	_, err := s.db.ExecContext(ctx, query,
 		req.ID,
-		req.Timestamp.UTC(),
+		req.Timestamp.UTC().Format(time.RFC3339Nano),
 		req.Endpoint,
 		req.Model,
 		streamInt,
@@ -230,7 +230,7 @@ func (s *SQLiteStore) GetStats(ctx context.Context, timeRange string) (*StatsSum
 	var args []interface{}
 	if !since.IsZero() {
 		aggregateQuery += " WHERE timestamp >= ?"
-		args = append(args, since)
+		args = append(args, since.Format(time.RFC3339Nano))
 	}
 
 	err := s.db.QueryRowContext(ctx, aggregateQuery, args...).Scan(
@@ -287,7 +287,7 @@ func (s *SQLiteStore) GetStats(ctx context.Context, timeRange string) (*StatsSum
 	var tArgs []interface{}
 	if !since.IsZero() {
 		timelineQuery += " WHERE timestamp >= ?"
-		tArgs = append(tArgs, since)
+		tArgs = append(tArgs, since.Format(time.RFC3339Nano))
 	}
 	timelineQuery += fmt.Sprintf(" GROUP BY bucket ORDER BY bucket ASC")
 
