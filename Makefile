@@ -2,7 +2,7 @@
 export
 
 PORT ?= 9878
-WEB_PORT ?= 5173
+WEB_PORT ?= 19190
 AIR := $(shell command -v air 2>/dev/null || echo "$(HOME)/go/bin/air")
 
 .PHONY: all help dev dev-be dev-fe dev-all build build-fe install-fe test format clean
