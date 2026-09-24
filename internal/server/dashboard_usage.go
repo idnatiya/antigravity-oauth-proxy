@@ -35,6 +35,23 @@ func (s *Server) handleUsageStats(w http.ResponseWriter, r *http.Request) {
 		"provider":   s.provider.Name(),
 	}
 
+	if s.antigravityClient != nil {
+		if modelsResp, err := s.antigravityClient.FetchAvailableModels(r.Context()); err == nil && modelsResp != nil {
+			quotas := make(map[string]interface{})
+			for mID, mData := range modelsResp.Models {
+				if len(mData.QuotaInfo) > 0 {
+					var q interface{}
+					if json.Unmarshal(mData.QuotaInfo, &q) == nil {
+						quotas[mID] = q
+					}
+				}
+			}
+			if len(quotas) > 0 {
+				accountInfo["quotas"] = quotas
+			}
+		}
+	}
+
 	if creds, err := s.provider.GetCredentials(); err == nil && creds != nil {
 		if creds.ExpiryDate > 0 {
 			nowMilli := time.Now().UnixMilli()

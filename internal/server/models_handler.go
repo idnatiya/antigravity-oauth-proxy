@@ -11,11 +11,12 @@ import (
 )
 
 type openAIModel struct {
-	ID      string `json:"id"`
-	Object  string `json:"object"`
-	Created int64  `json:"created"`
-	OwnedBy string `json:"owned_by"`
-	Name    string `json:"name,omitempty"`
+	ID        string                 `json:"id"`
+	Object    string                 `json:"object"`
+	Created   int64                  `json:"created"`
+	OwnedBy   string                 `json:"owned_by"`
+	Name      string                 `json:"name,omitempty"`
+	QuotaInfo json.RawMessage        `json:"quotaInfo,omitempty"`
 }
 
 type openAIModelsListResponse struct {
@@ -54,7 +55,11 @@ func (s *Server) modelsHandler(w http.ResponseWriter, r *http.Request) {
 		if !isSupportedFamily(family) {
 			continue
 		}
-		models = append(models, newOpenAIModel(modelID, family, created))
+		m := newOpenAIModel(modelID, family, created)
+		if len(data.Models[modelID].QuotaInfo) > 0 {
+			m.QuotaInfo = data.Models[modelID].QuotaInfo
+		}
+		models = append(models, m)
 	}
 
 	sort.Slice(models, func(i, j int) bool {
