@@ -1,0 +1,27 @@
+services:
+  antigravity-proxy:
+    image: ghcr.io/idnatiya/antigravity-oauth-proxy:latest
+    container_name: antigravity-oauth-proxy
+    restart: unless-stopped
+    ports:
+      - "9878:9878"
+    environment:
+      - PORT=9878
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-replace-with-a-long-random-value}
+    volumes:
+      - ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.docker/config.json:/config.json:ro
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=60
+      - WATCHTOWER_LABEL_ENABLE=true
+    command: --interval 60 --cleanup
