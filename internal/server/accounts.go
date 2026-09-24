@@ -22,6 +22,8 @@ import (
 
 const (
 	defaultQuotaCooldown       = time.Hour
+	quotaCacheTTL              = time.Minute
+	quotaFetchTimeout          = 15 * time.Second
 	credentialsFailureCooldown = 30 * time.Minute
 )
 
@@ -37,11 +39,14 @@ var (
 
 type account struct {
 	id         string // email, or "default" for the legacy oauth_creds.json account
-	path       string // "" for the default account, which cannot be removed
+	path       string // "" when credentials come from CLOUDCODE_OAUTH_CREDS; cannot be removed
 	projectID  string
 	client     *antigravity.Client
-	coolUntil  time.Time // guarded by AccountPool.mu
-	coolReason string    // guarded by AccountPool.mu
+	coolUntil  time.Time                 // guarded by AccountPool.mu
+	coolReason string                    // guarded by AccountPool.mu
+	quota      *antigravity.QuotaSummary // guarded by AccountPool.mu
+	quotaErr   string                    // guarded by AccountPool.mu
+	quotaAt    time.Time                 // guarded by AccountPool.mu
 }
 
 // AccountPool holds the Google accounts used for upstream requests. Accounts
@@ -186,6 +191,44 @@ type accountView struct {
 	Removable     bool   `json:"removable"`
 	CoolingUntil  string `json:"coolingUntil,omitempty"`
 	CoolingReason string `json:"coolingReason,omitempty"`
+
+	Quota      *antigravity.QuotaSummary `json:"quota,omitempty"`
+	QuotaError string                    `json:"quotaError,omitempty"`
+}
+
+// refreshQuotas re-reads usage for accounts whose cached summary is older than
+// quotaCacheTTL, so reloading the dashboard doesn't hammer Google.
+func (p *AccountPool) refreshQuotas(ctx context.Context) {
+	p.mu.Lock()
+	now := p.now()
+	var stale []*account
+	for _, a := range p.accounts {
+		if now.Sub(a.quotaAt) >= quotaCacheTTL {
+			stale = append(stale, a)
+		}
+	}
+	p.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(ctx, quotaFetchTimeout)
+	defer cancel()
+	var wg sync.WaitGroup
+	for _, a := range stale {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			summary, err := a.client.RetrieveUserQuotaSummary(ctx, a.projectID)
+			p.mu.Lock()
+			defer p.mu.Unlock()
+			a.quotaAt = p.now()
+			if err != nil {
+				a.quotaErr = err.Error()
+				logger.Get().Warn().Err(err).Str("account", a.id).Msg("Failed to read account quota")
+				return
+			}
+			a.quota, a.quotaErr = summary, ""
+		}()
+	}
+	wg.Wait()
 }
 
 func (p *AccountPool) list() []accountView {
@@ -194,7 +237,7 @@ func (p *AccountPool) list() []accountView {
 	now := p.now()
 	views := make([]accountView, 0, len(p.accounts))
 	for _, a := range p.accounts {
-		v := accountView{ID: a.id, ProjectID: a.projectID, Removable: a.path != ""}
+		v := accountView{ID: a.id, ProjectID: a.projectID, Removable: a.path != "", Quota: a.quota, QuotaError: a.quotaErr}
 		if now.Before(a.coolUntil) {
 			v.CoolingUntil = a.coolUntil.UTC().Format(time.RFC3339)
 			v.CoolingReason = a.coolReason
@@ -334,6 +377,9 @@ func (s *Server) accountsHandler(w http.ResponseWriter, r *http.Request) {
 			writeAdminError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+	}
+	if r.Method == http.MethodGet {
+		s.accounts.refreshQuotas(r.Context())
 	}
 	writeAdminJSON(w, map[string]any{
 		"accounts":        s.accounts.list(),
