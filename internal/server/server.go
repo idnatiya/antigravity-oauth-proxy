@@ -195,10 +195,12 @@ func (s *Server) setupRoutes() {
 
 	// Dashboard Usage Telemetry API
 	s.mux.HandleFunc("/api/accounts", s.dashboardAuthMiddleware(s.accountsHandler))
+	s.mux.HandleFunc("/api/accounts/test", s.dashboardAuthMiddleware(s.handleTestAccount))
 	if s.googleAuth != nil {
 		s.mux.HandleFunc("/api/accounts/auth/start", s.dashboardAuthMiddleware(s.googleAuthStartHandler))
 		s.mux.HandleFunc("/api/accounts/auth/status", s.dashboardAuthMiddleware(s.googleAuthStatusHandler))
 	}
+	s.mux.HandleFunc("/api/playground/chat", s.dashboardAuthMiddleware(s.openAIChatCompletionsHandler))
 	s.mux.HandleFunc("/api/usage/stats", s.dashboardAuthMiddleware(s.handleUsageStats))
 	s.mux.HandleFunc("/api/usage/requests", s.dashboardAuthMiddleware(s.handleUsageRequests))
 

@@ -386,3 +386,103 @@ func (s *Server) accountsHandler(w http.ResponseWriter, r *http.Request) {
 		"webLoginEnabled": s.googleAuth != nil,
 	})
 }
+
+// AccountTestResult holds the health check / test connection result for an account.
+type AccountTestResult struct {
+	ID        string `json:"id"`
+	ProjectID string `json:"projectId"`
+	Success   bool   `json:"success"`
+	LatencyMs int64  `json:"latencyMs"`
+	Error     string `json:"error,omitempty"`
+}
+
+// testAccount runs a live LoadCodeAssist check for an account to verify credentials and connectivity.
+func (p *AccountPool) testAccount(ctx context.Context, id string) (*AccountTestResult, error) {
+	p.mu.Lock()
+	var target *account
+	for _, a := range p.accounts {
+		if a.id == id {
+			target = a
+			break
+		}
+	}
+	p.mu.Unlock()
+
+	if target == nil {
+		return nil, errors.New("account not found")
+	}
+
+	start := time.Now()
+	_, err := target.client.LoadCodeAssist()
+	latency := time.Since(start).Milliseconds()
+
+	res := &AccountTestResult{
+		ID:        target.id,
+		ProjectID: target.projectID,
+		LatencyMs: latency,
+	}
+
+	if err != nil {
+		res.Success = false
+		res.Error = err.Error()
+	} else {
+		res.Success = true
+	}
+
+	return res, nil
+}
+
+// testAllAccounts runs LoadCodeAssist for every account concurrently.
+func (p *AccountPool) testAllAccounts(ctx context.Context) []AccountTestResult {
+	p.mu.Lock()
+	accounts := make([]*account, len(p.accounts))
+	copy(accounts, p.accounts)
+	p.mu.Unlock()
+
+	var wg sync.WaitGroup
+	results := make([]AccountTestResult, len(accounts))
+	for i, a := range accounts {
+		wg.Add(1)
+		go func(idx int, acc *account) {
+			defer wg.Done()
+			start := time.Now()
+			_, err := acc.client.LoadCodeAssist()
+			latency := time.Since(start).Milliseconds()
+			res := AccountTestResult{
+				ID:        acc.id,
+				ProjectID: acc.projectID,
+				LatencyMs: latency,
+			}
+			if err != nil {
+				res.Success = false
+				res.Error = err.Error()
+			} else {
+				res.Success = true
+			}
+			results[idx] = res
+		}(i, a)
+	}
+	wg.Wait()
+	return results
+}
+
+func (s *Server) handleTestAccount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" || id == "all" {
+		results := s.accounts.testAllAccounts(r.Context())
+		writeAdminJSON(w, map[string]any{"results": results})
+		return
+	}
+
+	result, err := s.accounts.testAccount(r.Context(), id)
+	if err != nil {
+		writeAdminError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeAdminJSON(w, map[string]any{"result": result})
+}

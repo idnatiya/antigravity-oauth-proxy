@@ -112,3 +112,12 @@ export interface AccountItem {
   quotaError?: string
 }
 
+export interface AccountTestResult {
+  id: string
+  projectId: string
+  success: boolean
+  latencyMs: number
+  error?: string
+}
+
+

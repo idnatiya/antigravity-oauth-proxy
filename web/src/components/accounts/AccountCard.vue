@@ -10,17 +10,22 @@ import {
   Bot,
   Shield,
   Lock,
+  Zap,
+  RefreshCw,
 } from '@lucide/vue'
-import type { AccountItem, QuotaBucket } from '@/types'
+import type { AccountItem, QuotaBucket, AccountTestResult } from '@/types'
 
 const props = defineProps<{
   account: AccountItem
   index: number
   disabled?: boolean
+  isTesting?: boolean
+  testResult?: AccountTestResult | null
 }>()
 
 const emit = defineEmits<{
   (e: 'remove', account: AccountItem): void
+  (e: 'test', account: AccountItem): void
 }>()
 
 const copiedField = ref<'email' | 'project' | null>(null)
@@ -184,10 +189,22 @@ const isPrimary = computed(() => props.index === 0)
               Fallback #{{ index + 1 }}
             </span>
 
+            <!-- Test Connection button -->
+            <button
+              type="button"
+              :disabled="disabled || isTesting"
+              @click="emit('test', account)"
+              :title="isTesting ? 'Testing CloudCode connectivity...' : 'Test connection to CloudCode API'"
+              class="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              <RefreshCw v-if="isTesting" class="h-3.5 w-3.5 animate-spin text-blue-400" />
+              <Zap v-else class="h-3.5 w-3.5" />
+            </button>
+
             <!-- Logout button -->
             <button
               v-if="account.removable"
-              :disabled="disabled"
+              :disabled="disabled || isTesting"
               @click="emit('remove', account)"
               title="Disconnect account"
               class="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors cursor-pointer"
@@ -203,8 +220,20 @@ const isPrimary = computed(() => props.index === 0)
             </span>
           </div>
 
-          <!-- Status Indicator -->
-          <div class="flex items-center">
+          <!-- Status Indicator & Test Result -->
+          <div class="flex items-center gap-2">
+            <!-- Test Result Pill (if tested) -->
+            <span
+              v-if="testResult"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium border"
+              :class="testResult.success ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' : 'bg-rose-500/10 text-rose-400 border-rose-500/25 cursor-help'"
+              :title="testResult.success ? `Verification successful in ${testResult.latencyMs}ms` : (testResult.error || 'Connection failed')"
+            >
+              <Check v-if="testResult.success" class="h-2.5 w-2.5" />
+              <AlertTriangle v-else class="h-2.5 w-2.5" />
+              {{ testResult.success ? `${testResult.latencyMs}ms OK` : 'Check Failed' }}
+            </span>
+
             <span
               v-if="isCooling"
               :title="`${account.coolingReason ?? ''} (until ${localTime(account.coolingUntil)})`"

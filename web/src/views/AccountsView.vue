@@ -12,13 +12,14 @@ import {
   Activity,
   ArrowRight,
   X,
+  Zap,
 } from '@lucide/vue'
 import { apiClient } from '@/services/apiClient'
 import { useUsageStore } from '@/stores/usageStore'
 import StatCard from '@/components/overview/StatCard.vue'
 import AccountCard from '@/components/accounts/AccountCard.vue'
 import DeleteAccountModal from '@/components/accounts/DeleteAccountModal.vue'
-import type { AccountItem } from '@/types'
+import type { AccountItem, AccountTestResult } from '@/types'
 
 const usageStore = useUsageStore()
 
@@ -112,6 +113,51 @@ async function confirmDeleteAccount() {
   })
 }
 
+// Account testing states
+const testingAccountIds = ref<Set<string>>(new Set())
+const testResults = ref<Record<string, AccountTestResult>>({})
+const testingAll = ref(false)
+
+async function testAccount(acc: AccountItem) {
+  testingAccountIds.value.add(acc.id)
+  try {
+    const res = await apiClient.post<{ result: AccountTestResult }>('/api/accounts/test', null, {
+      params: { id: acc.id },
+    })
+    testResults.value[acc.id] = res.result
+  } catch (err: unknown) {
+    testResults.value[acc.id] = {
+      id: acc.id,
+      projectId: acc.projectId,
+      success: false,
+      latencyMs: 0,
+      error: err instanceof Error ? err.message : 'Test failed',
+    }
+  } finally {
+    testingAccountIds.value.delete(acc.id)
+  }
+}
+
+async function testAllAccounts() {
+  if (testingAll.value || accounts.value.length === 0) return
+  testingAll.value = true
+  for (const a of accounts.value) {
+    testingAccountIds.value.add(a.id)
+  }
+  try {
+    const res = await apiClient.post<{ results: AccountTestResult[] }>('/api/accounts/test')
+    for (const r of res.results || []) {
+      testResults.value[r.id] = r
+    }
+    successMessage.value = `Connection test completed for ${res.results?.length || 0} accounts.`
+  } catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'Failed to test accounts.'
+  } finally {
+    testingAccountIds.value.clear()
+    testingAll.value = false
+  }
+}
+
 // KPI Stats computation
 const totalAccountsCount = computed(() => accounts.value.length)
 
@@ -185,7 +231,19 @@ onMounted(() => run(load))
 
       <div class="shrink-0 flex items-center gap-2.5">
         <button
-          :disabled="busy"
+          v-if="accounts.length > 0"
+          :disabled="busy || testingAll"
+          @click="testAllAccounts"
+          title="Test connectivity for all accounts"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#2c2e36] bg-[#202227] text-zinc-300 hover:text-white hover:bg-[#282a32] disabled:opacity-50 transition-colors text-xs font-medium cursor-pointer shadow-xs"
+        >
+          <RefreshCw v-if="testingAll" class="h-3.5 w-3.5 animate-spin text-amber-400" />
+          <Zap v-else class="h-3.5 w-3.5 text-amber-400" />
+          <span>{{ testingAll ? 'Testing...' : 'Test All' }}</span>
+        </button>
+
+        <button
+          :disabled="busy || testingAll"
           @click="run(load)"
           title="Refresh account pool & quotas"
           class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#2c2e36] bg-[#202227] text-zinc-300 hover:text-white hover:bg-[#282a32] disabled:opacity-50 transition-colors text-xs font-medium cursor-pointer shadow-xs"
@@ -196,7 +254,7 @@ onMounted(() => run(load))
 
         <button
           v-if="webLoginEnabled"
-          :disabled="busy"
+          :disabled="busy || testingAll"
           @click="startLogin"
           class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium transition-all shadow-sm shadow-blue-500/10 cursor-pointer"
         >
@@ -498,8 +556,11 @@ onMounted(() => run(load))
         :key="acc.id"
         :account="acc"
         :index="i"
-        :disabled="busy"
+        :disabled="busy || testingAll"
+        :is-testing="testingAccountIds.has(acc.id)"
+        :test-result="testResults[acc.id]"
         @remove="openDeleteModal"
+        @test="testAccount"
       />
     </div>
 

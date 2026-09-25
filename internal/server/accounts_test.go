@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -104,5 +105,21 @@ func TestAccountPoolLogoutDefaultAccount(t *testing.T) {
 	err := pool.try(&antigravity.GenerateContentRequest{}, nil)
 	if !errors.As(err, &upstreamErr) || upstreamErr.StatusCode != 503 {
 		t.Fatalf("expected 503 with no accounts, got %v", err)
+	}
+}
+
+func TestAccountPoolTestAccountNotFound(t *testing.T) {
+	pool := &AccountPool{now: time.Now}
+	_, err := pool.testAccount(context.Background(), "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent account, got nil")
+	}
+}
+
+func TestAccountPoolTestAllAccountsEmpty(t *testing.T) {
+	pool := &AccountPool{now: time.Now}
+	results := pool.testAllAccounts(context.Background())
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results, got %d", len(results))
 	}
 }
