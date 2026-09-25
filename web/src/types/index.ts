@@ -123,4 +123,13 @@ export interface AccountTestResult {
   error?: string
 }
 
+export interface APIKey {
+  id: number
+  name: string
+  key: string
+  key_prefix: string
+  created_at: string
+  last_used_at?: string | null
+}
+
 

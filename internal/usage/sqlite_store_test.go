@@ -130,4 +130,51 @@ func TestSQLiteStore(t *testing.T) {
 		assert.Len(t, listSearch, 1)
 		assert.Equal(t, "req-3", listSearch[0].ID)
 	})
+
+	t.Run("APIKeyOperations", func(t *testing.T) {
+		// Create auto-generated key
+		key1, err := store.CreateAPIKey(ctx, "Cursor Work", "")
+		require.NoError(t, err)
+		require.NotNil(t, key1)
+		assert.NotEmpty(t, key1.Key)
+		assert.Contains(t, key1.Key, "sk-agy-")
+		assert.Equal(t, "Cursor Work", key1.Name)
+		assert.NotEmpty(t, key1.KeyPrefix)
+
+		// Create custom key
+		key2, err := store.CreateAPIKey(ctx, "My Custom Key", "custom-secret-key-123")
+		require.NoError(t, err)
+		require.NotNil(t, key2)
+		assert.Equal(t, "custom-secret-key-123", key2.Key)
+
+		// List keys
+		keys, err := store.ListAPIKeys(ctx)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(keys), 2)
+
+		// Validate key
+		valKey, valid, err := store.ValidateAPIKey(ctx, key1.Key)
+		require.NoError(t, err)
+		assert.True(t, valid)
+		assert.Equal(t, key1.ID, valKey.ID)
+
+		// Validate non-existent key
+		valKey, valid, err = store.ValidateAPIKey(ctx, "sk-agy-invalid-key")
+		require.NoError(t, err)
+		assert.False(t, valid)
+		assert.Nil(t, valKey)
+
+		// Touch key
+		err = store.TouchAPIKey(ctx, key1.ID)
+		require.NoError(t, err)
+
+		// Delete key
+		err = store.DeleteAPIKey(ctx, key2.ID)
+		require.NoError(t, err)
+
+		// Verify deleted key is invalid
+		valKey, valid, err = store.ValidateAPIKey(ctx, "custom-secret-key-123")
+		require.NoError(t, err)
+		assert.False(t, valid)
+	})
 }

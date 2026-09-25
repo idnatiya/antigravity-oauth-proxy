@@ -270,7 +270,7 @@ const curlCommand = computed(() => {
   const escapedPrompt = promptText.value.replace(/"/g, '\\"').replace(/\n/g, ' ') || 'Hello!'
   return `curl -X POST "${origin}/v1/chat/completions" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer <ADMIN_API_KEY>" \\
+  -H "Authorization: Bearer <API_KEY>" \\
   -d '{
     "model": "${selectedModel.value}",
     "stream": ${streamMode.value},
@@ -720,7 +720,7 @@ onMounted(() => {
           <pre class="p-4 rounded-xl bg-[#090a0c] border border-zinc-800/80 text-zinc-300 font-mono text-xs overflow-x-auto selection:bg-blue-600/40 leading-relaxed"><code>{{ curlCommand }}</code></pre>
 
           <p class="text-[11px] text-zinc-500">
-            Replace <code class="text-blue-400 font-mono">&lt;ADMIN_API_KEY&gt;</code> with your proxy admin key or API key configured in environment variables.
+            Replace <code class="text-blue-400 font-mono">&lt;API_KEY&gt;</code> with an API key generated from the API Keys menu.
           </p>
         </div>
 

@@ -224,6 +224,72 @@ func TestDashboardAuthAndUsageHandlers(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
+	t.Run("APIKeyManagement", func(t *testing.T) {
+		// 1. Create API key without auth cookie -> 401
+		createBody, _ := json.Marshal(map[string]string{
+			"name": "Cursor Integration",
+		})
+		unauthReq := httptest.NewRequest(http.MethodPost, "/api/keys", bytes.NewReader(createBody))
+		unauthW := httptest.NewRecorder()
+		srv.ServeHTTP(unauthW, unauthReq)
+		assert.Equal(t, http.StatusUnauthorized, unauthW.Code)
+
+		// 2. Create API key with auth cookie -> 201 Created
+		createReq := httptest.NewRequest(http.MethodPost, "/api/keys", bytes.NewReader(createBody))
+		createReq.AddCookie(sessionCookie)
+		createW := httptest.NewRecorder()
+		srv.ServeHTTP(createW, createReq)
+		assert.Equal(t, http.StatusCreated, createW.Code)
+
+		var createdKey usage.APIKey
+		require.NoError(t, json.NewDecoder(createW.Body).Decode(&createdKey))
+		assert.Equal(t, "Cursor Integration", createdKey.Name)
+		assert.NotEmpty(t, createdKey.Key)
+		assert.Contains(t, createdKey.Key, "sk-agy-")
+
+		// 3. List API keys -> 200
+		listReq := httptest.NewRequest(http.MethodGet, "/api/keys", nil)
+		listReq.AddCookie(sessionCookie)
+		listW := httptest.NewRecorder()
+		srv.ServeHTTP(listW, listReq)
+		assert.Equal(t, http.StatusOK, listW.Code)
+
+		var listResp struct {
+			Keys []*usage.APIKey `json:"keys"`
+		}
+		require.NoError(t, json.NewDecoder(listW.Body).Decode(&listResp))
+		assert.NotEmpty(t, listResp.Keys)
+
+		// 4. Test adminMiddleware validation with the created API key
+		// Sending request to a protected endpoint e.g. /admin/credentials/status with Bearer token
+		apiReq := httptest.NewRequest(http.MethodGet, "/admin/credentials/status", nil)
+		apiReq.Header.Set("Authorization", "Bearer "+createdKey.Key)
+		apiW := httptest.NewRecorder()
+		srv.ServeHTTP(apiW, apiReq)
+		assert.Equal(t, http.StatusOK, apiW.Code)
+
+		// Testing with wrong API key -> 401
+		badReq := httptest.NewRequest(http.MethodGet, "/admin/credentials/status", nil)
+		badReq.Header.Set("Authorization", "Bearer sk-agy-invalid-key-999")
+		badW := httptest.NewRecorder()
+		srv.ServeHTTP(badW, badReq)
+		assert.Equal(t, http.StatusUnauthorized, badW.Code)
+
+		// 5. Delete the key -> 200
+		delReq := httptest.NewRequest(http.MethodDelete, "/api/keys?id=1", nil)
+		delReq.AddCookie(sessionCookie)
+		delW := httptest.NewRecorder()
+		srv.ServeHTTP(delW, delReq)
+		assert.Equal(t, http.StatusOK, delW.Code)
+
+		// 6. Request with the deleted key now fails with 401
+		deletedReq := httptest.NewRequest(http.MethodGet, "/admin/credentials/status", nil)
+		deletedReq.Header.Set("Authorization", "Bearer "+createdKey.Key)
+		deletedW := httptest.NewRecorder()
+		srv.ServeHTTP(deletedW, deletedReq)
+		assert.Equal(t, http.StatusUnauthorized, deletedW.Code)
+	})
+
 	t.Run("DashboardUIHTML", func(t *testing.T) {
 		routes := []string{
 			"/dashboard",

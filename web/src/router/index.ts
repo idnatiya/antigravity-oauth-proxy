@@ -43,6 +43,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/api-keys',
+    name: 'api-keys',
+    component: () => import('@/views/ApiKeysView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/security',
     name: 'security',
     component: () => import('@/views/SecurityView.vue'),

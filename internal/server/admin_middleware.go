@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"net/http"
@@ -10,14 +11,15 @@ import (
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 )
 
-// adminMiddleware checks the admin key in the supported Gemini and OpenAI locations.
+// adminMiddleware checks the API key in the supported Gemini and OpenAI locations,
+// validating against both environment ADMIN_API_KEY and dashboard-managed API keys.
 func (s *Server) adminMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		adminKey, ok := env.Get("ADMIN_API_KEY")
-		if !ok || adminKey == "" {
-			logger.Get().Error().Msg("ADMIN_API_KEY environment variable not set")
+		adminKey, hasAdminKey := env.Get("ADMIN_API_KEY")
+		if (!hasAdminKey || adminKey == "") && s.usageStore == nil {
+			logger.Get().Error().Msg("Neither ADMIN_API_KEY nor API key store is configured")
 			w.Header().Set("Cache-Control", "no-store")
-			http.Error(w, "Admin API not configured", http.StatusInternalServerError)
+			http.Error(w, "API keys not configured", http.StatusInternalServerError)
 			return
 		}
 
@@ -50,24 +52,40 @@ func (s *Server) adminMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			logger.Get().Warn().Msgf("Missing API key for protected endpoint: %s %s from %s",
 				r.Method, r.URL.Path, r.RemoteAddr)
 			w.Header().Set("Cache-Control", "no-store")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized: Missing API key", http.StatusUnauthorized)
 			return
 		}
 
-		providedHash := sha256.Sum256([]byte(providedToken))
-		expectedHash := sha256.Sum256([]byte(adminKey))
-		if subtle.ConstantTimeCompare(providedHash[:], expectedHash[:]) != 1 {
-			logger.Get().Warn().Msgf("Invalid API key for protected endpoint: %s %s from %s",
-				r.Method, r.URL.Path, r.RemoteAddr)
-			w.Header().Set("Cache-Control", "no-store")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
+		// 1. Check against environment ADMIN_API_KEY fallback
+		if hasAdminKey && adminKey != "" {
+			providedHash := sha256.Sum256([]byte(providedToken))
+			expectedHash := sha256.Sum256([]byte(adminKey))
+			if subtle.ConstantTimeCompare(providedHash[:], expectedHash[:]) == 1 {
+				logger.Get().Info().Msgf("Protected request authorized via ADMIN_API_KEY: %s %s from %s",
+					r.Method, r.URL.Path, r.RemoteAddr)
+				next(w, r)
+				return
+			}
 		}
 
-		// Admin authorized
-		logger.Get().Info().Msgf("Protected request authorized: %s %s from %s",
+		// 2. Check against dashboard-managed API keys in usage store
+		if s.usageStore != nil {
+			apiKey, valid, err := s.usageStore.ValidateAPIKey(r.Context(), providedToken)
+			if err == nil && valid && apiKey != nil {
+				logger.Get().Info().Str("key_name", apiKey.Name).Int64("key_id", apiKey.ID).Msgf("Protected request authorized via API key: %s %s from %s",
+					r.Method, r.URL.Path, r.RemoteAddr)
+				go func(id int64) {
+					_ = s.usageStore.TouchAPIKey(context.Background(), id)
+				}(apiKey.ID)
+				next(w, r)
+				return
+			}
+		}
+
+		// Neither matched
+		logger.Get().Warn().Msgf("Invalid API key for protected endpoint: %s %s from %s",
 			r.Method, r.URL.Path, r.RemoteAddr)
-
-		next(w, r)
+		w.Header().Set("Cache-Control", "no-store")
+		http.Error(w, "Unauthorized: Invalid API key", http.StatusUnauthorized)
 	}
 }

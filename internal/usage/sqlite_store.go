@@ -4,7 +4,10 @@ package usage
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -21,9 +24,10 @@ import (
 
 // SQLiteStore implements the Store interface using an embedded SQLite database.
 type SQLiteStore struct {
-	db     *sql.DB
-	dbPath string
-	mu     sync.RWMutex
+	db       *sql.DB
+	dbPath   string
+	mu       sync.RWMutex
+	keyCache sync.Map
 }
 
 // NewSQLiteStore initializes a SQLite usage database at the specified path or default config directory.
@@ -76,6 +80,11 @@ func NewSQLiteStore(customPath string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to seed default admin user: %w", err)
 	}
 
+	if err := store.seedDefaultAPIKey(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to seed default api key: %w", err)
+	}
+
 	logger.Get().Info().Str("path", dbPath).Msg("SQLite usage & telemetry store initialized")
 	return store, nil
 }
@@ -113,6 +122,18 @@ func (s *SQLiteStore) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_requests_timestamp ON requests(timestamp);
 	CREATE INDEX IF NOT EXISTS idx_requests_model ON requests(model);
 	CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status_code);
+
+	CREATE TABLE IF NOT EXISTS api_keys (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		key TEXT NOT NULL,
+		key_hash TEXT UNIQUE NOT NULL,
+		key_prefix TEXT NOT NULL,
+		created_at DATETIME NOT NULL,
+		last_used_at DATETIME
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
 	`
 	_, err := s.db.Exec(schema)
 	return err
@@ -143,6 +164,32 @@ func (s *SQLiteStore) seedDefaultAdmin() error {
 	}
 
 	logger.Get().Info().Msg("Seeded default admin user with username 'admin'")
+	return nil
+}
+
+func (s *SQLiteStore) seedDefaultAPIKey() error {
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM api_keys").Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	adminKey, ok := env.Get("ADMIN_API_KEY")
+	if !ok || strings.TrimSpace(adminKey) == "" {
+		return nil
+	}
+
+	adminKey = strings.TrimSpace(adminKey)
+	ctx := context.Background()
+	_, err = s.CreateAPIKey(ctx, "Default (from ADMIN_API_KEY)", adminKey)
+	if err != nil {
+		return fmt.Errorf("failed to seed default API key from ADMIN_API_KEY: %w", err)
+	}
+
+	logger.Get().Info().Msg("Seeded default API key from ADMIN_API_KEY environment variable")
 	return nil
 }
 
@@ -451,4 +498,173 @@ func (s *SQLiteStore) UpdatePassword(ctx context.Context, username, newPasswordH
 // Close closes the database connection.
 func (s *SQLiteStore) Close() error {
 	return s.db.Close()
+}
+
+func generateAPIKey() (string, error) {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return "sk-agy-" + hex.EncodeToString(bytes), nil
+}
+
+func hashAPIKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+func formatKeyPrefix(key string) string {
+	if len(key) <= 12 {
+		return key
+	}
+	return key[:8] + "..." + key[len(key)-4:]
+}
+
+// ListAPIKeys retrieves all registered API keys ordered newest first.
+func (s *SQLiteStore) ListAPIKeys(ctx context.Context) ([]*APIKey, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	rows, err := s.db.QueryContext(ctx, "SELECT id, name, key, key_hash, key_prefix, created_at, last_used_at FROM api_keys ORDER BY id DESC")
+	if err != nil {
+		return nil, fmt.Errorf("failed to list api keys: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []*APIKey
+	for rows.Next() {
+		var k APIKey
+		var lastUsed sql.NullTime
+		if err := rows.Scan(&k.ID, &k.Name, &k.Key, &k.KeyHash, &k.KeyPrefix, &k.CreatedAt, &lastUsed); err != nil {
+			return nil, fmt.Errorf("failed to scan api key: %w", err)
+		}
+		if lastUsed.Valid {
+			t := lastUsed.Time
+			k.LastUsedAt = &t
+		}
+		keys = append(keys, &k)
+	}
+	if keys == nil {
+		keys = make([]*APIKey, 0)
+	}
+	return keys, nil
+}
+
+// CreateAPIKey generates or registers a new API key.
+func (s *SQLiteStore) CreateAPIKey(ctx context.Context, name string, customKey string) (*APIKey, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, errors.New("api key name cannot be empty")
+	}
+
+	keyStr := strings.TrimSpace(customKey)
+	if keyStr == "" {
+		generated, err := generateAPIKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate secure key: %w", err)
+		}
+		keyStr = generated
+	}
+
+	keyHash := hashAPIKey(keyStr)
+	keyPrefix := formatKeyPrefix(keyStr)
+	now := time.Now().UTC()
+
+	res, err := s.db.ExecContext(ctx,
+		"INSERT INTO api_keys (name, key, key_hash, key_prefix, created_at) VALUES (?, ?, ?, ?, ?)",
+		name, keyStr, keyHash, keyPrefix, now,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert api key: %w", err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get last insert id: %w", err)
+	}
+
+	apiKey := &APIKey{
+		ID:        id,
+		Name:      name,
+		Key:       keyStr,
+		KeyHash:   keyHash,
+		KeyPrefix: keyPrefix,
+		CreatedAt: now,
+	}
+
+	s.keyCache.Store(keyHash, apiKey)
+	return apiKey, nil
+}
+
+// DeleteAPIKey removes an API key by ID.
+func (s *SQLiteStore) DeleteAPIKey(ctx context.Context, id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var keyHash string
+	err := s.db.QueryRowContext(ctx, "SELECT key_hash FROM api_keys WHERE id = ?", id).Scan(&keyHash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("api key with id %d not found", id)
+		}
+		return err
+	}
+
+	_, err = s.db.ExecContext(ctx, "DELETE FROM api_keys WHERE id = ?", id)
+	if err != nil {
+		return fmt.Errorf("failed to delete api key: %w", err)
+	}
+
+	s.keyCache.Delete(keyHash)
+	return nil
+}
+
+// ValidateAPIKey verifies an incoming raw API key against stored keys.
+func (s *SQLiteStore) ValidateAPIKey(ctx context.Context, rawKey string) (*APIKey, bool, error) {
+	rawKey = strings.TrimSpace(rawKey)
+	if rawKey == "" {
+		return nil, false, nil
+	}
+
+	keyHash := hashAPIKey(rawKey)
+	if val, ok := s.keyCache.Load(keyHash); ok {
+		return val.(*APIKey), true, nil
+	}
+
+	s.mu.RLock()
+	var k APIKey
+	var lastUsed sql.NullTime
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id, name, key, key_hash, key_prefix, created_at, last_used_at FROM api_keys WHERE key_hash = ?",
+		keyHash,
+	).Scan(&k.ID, &k.Name, &k.Key, &k.KeyHash, &k.KeyPrefix, &k.CreatedAt, &lastUsed)
+	s.mu.RUnlock()
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+
+	if lastUsed.Valid {
+		t := lastUsed.Time
+		k.LastUsedAt = &t
+	}
+
+	s.keyCache.Store(keyHash, &k)
+	return &k, true, nil
+}
+
+// TouchAPIKey updates the last_used_at timestamp for a key.
+func (s *SQLiteStore) TouchAPIKey(ctx context.Context, id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now().UTC()
+	_, err := s.db.ExecContext(ctx, "UPDATE api_keys SET last_used_at = ? WHERE id = ?", now, id)
+	return err
 }

@@ -83,6 +83,17 @@ type RequestFilter struct {
 	EndTime   *time.Time
 }
 
+// APIKey represents an API access key for authenticating AI clients and tools.
+type APIKey struct {
+	ID         int64      `json:"id"`
+	Name       string     `json:"name"`
+	Key        string     `json:"key,omitempty"`
+	KeyHash    string     `json:"-"`
+	KeyPrefix  string     `json:"key_prefix"`
+	CreatedAt  time.Time  `json:"created_at"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+}
+
 // Store defines persistent storage operations for usage metrics and authentication.
 type Store interface {
 	RecordRequest(ctx context.Context, req *RequestRecord) error
@@ -90,6 +101,11 @@ type Store interface {
 	GetRequests(ctx context.Context, filter RequestFilter) ([]*RequestRecord, int64, error)
 	GetUser(ctx context.Context, username string) (*User, error)
 	UpdatePassword(ctx context.Context, username, newPasswordHash string) error
+	ListAPIKeys(ctx context.Context) ([]*APIKey, error)
+	CreateAPIKey(ctx context.Context, name string, customKey string) (*APIKey, error)
+	DeleteAPIKey(ctx context.Context, id int64) error
+	ValidateAPIKey(ctx context.Context, rawKey string) (*APIKey, bool, error)
+	TouchAPIKey(ctx context.Context, id int64) error
 	Close() error
 }
 

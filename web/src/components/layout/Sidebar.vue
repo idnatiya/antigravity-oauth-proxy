@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Sparkles, Users, FlaskConical, CircleDot } from '@lucide/vue'
+import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Sparkles, Users, FlaskConical, CircleDot, KeyRound } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsageStore } from '@/stores/usageStore'
 
@@ -15,6 +15,7 @@ const navItems = [
   { name: 'Requests', to: '/requests', icon: ListFilter },
   { name: 'Models', to: '/models', icon: Cpu },
   { name: 'Accounts', to: '/accounts', icon: Users },
+  { name: 'API Keys', to: '/api-keys', icon: KeyRound },
   { name: 'Security', to: '/security', icon: ShieldCheck },
 ]
 

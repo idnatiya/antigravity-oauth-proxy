@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import {
   ShieldCheck,
   Key,
@@ -190,16 +190,18 @@ async function copyProjectId() {
       </Card>
 
       <!-- API Key Protection -->
-      <Card class="p-4 bg-[#121316] border-zinc-800/80 flex items-center justify-between shadow-xs">
-        <div class="space-y-1">
-          <span class="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">API Auth Guard</span>
-          <div class="text-sm font-bold font-mono text-amber-400">Bearer Token</div>
-          <span class="text-[10px] text-zinc-500 block">ADMIN_API_KEY Guard</span>
-        </div>
-        <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-          <KeyRound class="h-4.5 w-4.5" />
-        </div>
-      </Card>
+      <RouterLink to="/api-keys" class="block">
+        <Card class="p-4 bg-[#121316] border-zinc-800/80 hover:border-zinc-700/80 transition-all flex items-center justify-between shadow-xs cursor-pointer group">
+          <div class="space-y-1">
+            <span class="text-[11px] font-medium text-zinc-400 uppercase tracking-wider group-hover:text-blue-400 transition-colors">API Keys Guard</span>
+            <div class="text-sm font-bold font-mono text-emerald-400">Multiple Keys</div>
+            <span class="text-[10px] text-zinc-500 block">Manage in API Keys &rarr;</span>
+          </div>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+            <KeyRound class="h-4.5 w-4.5" />
+          </div>
+        </Card>
+      </RouterLink>
     </div>
 
     <!-- Cards Grid: Administrator Profile & Upstream CloudCode -->
@@ -447,16 +449,22 @@ async function copyProjectId() {
             <span>Protected Endpoints</span>
           </div>
           <p class="text-[11px] text-zinc-400 leading-relaxed">
-            Requests to proxy model execution endpoints require the Bearer token header if <code class="font-mono text-zinc-300">ADMIN_API_KEY</code> is set:
+            Requests to proxy model execution endpoints require an authenticated API Key (managed via Dashboard):
           </p>
           <div class="rounded-lg bg-[#08090b] border border-zinc-800 p-2.5 font-mono text-[11px] text-blue-300">
-            Authorization: Bearer &lt;ADMIN_API_KEY&gt;
+            Authorization: Bearer &lt;API_KEY&gt;
           </div>
           <ul class="text-[11px] text-zinc-400 space-y-1 list-disc pl-4 pt-1">
             <li><code class="font-mono text-zinc-300">/v1/chat/completions</code> (OpenAI compatible)</li>
             <li><code class="font-mono text-zinc-300">/v1beta/models/*</code> (Gemini native)</li>
             <li><code class="font-mono text-zinc-300">/mcp</code> (Model Context Protocol streamable)</li>
           </ul>
+          <div class="pt-1">
+            <RouterLink to="/api-keys" class="inline-flex items-center text-[11px] text-blue-400 hover:text-blue-300 font-sans gap-1">
+              <span>Manage API Keys</span>
+              <ArrowRight class="h-3 w-3" />
+            </RouterLink>
+          </div>
         </div>
 
         <!-- Security Best Practices -->

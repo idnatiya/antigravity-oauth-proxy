@@ -35,7 +35,7 @@ const curlSnippet = computed(() => {
   const model = props.modelId || 'gemini-2.5-flash'
   return `curl -X POST ${baseUrl.value}/chat/completions \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer $ADMIN_API_KEY" \\
+  -H "Authorization: Bearer $API_KEY" \\
   -d '{
     "model": "${model}",
     "messages": [
@@ -54,7 +54,7 @@ const pythonSnippet = computed(() => {
 
 client = OpenAI(
     base_url="${baseUrl.value}",
-    api_key="your-api-key",  # ADMIN_API_KEY
+    api_key="your-api-key",  # sk-agy-... (from API Keys dashboard)
 )
 
 stream = client.chat.completions.create(
@@ -77,7 +77,7 @@ const typescriptSnippet = computed(() => {
 
 const openai = new OpenAI({
   baseURL: "${baseUrl.value}",
-  apiKey: "your-api-key", // ADMIN_API_KEY
+  apiKey: "your-api-key", // sk-agy-... (from API Keys dashboard)
 });
 
 async function main() {
