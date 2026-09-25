@@ -88,3 +88,27 @@ export interface OpenAIModelsResponse {
   object: string
   data: OpenAIModel[]
 }
+
+export interface QuotaBucket {
+  bucketId?: string
+  displayName?: string
+  window?: string
+  remainingFraction?: number
+  resetTime?: string
+}
+
+export interface QuotaGroup {
+  displayName: string
+  buckets: QuotaBucket[]
+}
+
+export interface AccountItem {
+  id: string
+  projectId: string
+  removable: boolean
+  coolingUntil?: string
+  coolingReason?: string
+  quota?: { groups: QuotaGroup[] }
+  quotaError?: string
+}
+
