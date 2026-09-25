@@ -2,6 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import {
   Users,
+  Plus,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -16,6 +17,7 @@ import { useUsageStore } from '@/stores/usageStore'
 import StatCard from '@/components/overview/StatCard.vue'
 import AccountCard from '@/components/accounts/AccountCard.vue'
 import DeleteAccountModal from '@/components/accounts/DeleteAccountModal.vue'
+import ConnectAccountModal from '@/components/accounts/ConnectAccountModal.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { AccountItem, AccountTestResult } from '@/types'
@@ -35,6 +37,14 @@ const statusFilter = ref<'all' | 'ready' | 'cooling'>('all')
 // Deletion modal state
 const accountToDelete = ref<AccountItem | null>(null)
 const showDeleteModal = ref(false)
+
+// Connect modal state
+const showConnectModal = ref(false)
+
+function onConnectSuccess() {
+  successMessage.value = 'Google account successfully connected to the pool!'
+  run(load)
+}
 
 async function run(action: () => Promise<void>) {
   errorMessage.value = ''
@@ -219,6 +229,17 @@ onMounted(() => run(load))
           <RefreshCw class="h-3.5 w-3.5" :class="busy ? 'animate-spin' : ''" />
           <span>Refresh</span>
         </Button>
+
+        <Button
+          size="sm"
+          class="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white cursor-pointer shadow-sm font-medium"
+          :disabled="busy || testingAll"
+          @click="showConnectModal = true"
+          title="Connect new Google account to pool"
+        >
+          <Plus class="h-3.5 w-3.5" />
+          <span>Connect Account</span>
+        </Button>
       </div>
     </div>
 
@@ -377,13 +398,17 @@ onMounted(() => run(load))
       <div class="space-y-1.5">
         <h3 class="text-sm font-semibold text-white">No Accounts in Pool</h3>
         <p class="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-          The proxy loads accounts from <code class="font-mono text-zinc-300">~/.config/antigravity-oauth-proxy/accounts/</code> and <code class="font-mono text-zinc-300">oauth_creds.json</code>.
+          Add your Google Antigravity account to enable multi-account quota rotation and seamless failover.
         </p>
       </div>
-      <div class="rounded-xl bg-[#0d0e11] border border-zinc-800/80 p-3.5 text-left font-mono text-[11px] text-zinc-400 space-y-1">
-        <div class="text-zinc-500 font-sans text-[10px] uppercase font-semibold">To add accounts via CLI:</div>
-        <div class="text-blue-400 font-bold">go run ./cmd/auth</div>
-        <div class="text-zinc-500 text-[10px] pt-1">Or place JSON credentials directly into the accounts directory.</div>
+      <div class="pt-2">
+        <Button
+          class="gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium cursor-pointer shadow-md"
+          @click="showConnectModal = true"
+        >
+          <Plus class="h-4 w-4" />
+          <span>Connect Google Account</span>
+        </Button>
       </div>
     </div>
 
@@ -426,6 +451,13 @@ onMounted(() => run(load))
       :busy="busy"
       @close="closeDeleteModal"
       @confirm="confirmDeleteAccount"
+    />
+
+    <!-- Connect Account Modal -->
+    <ConnectAccountModal
+      :open="showConnectModal"
+      @close="showConnectModal = false"
+      @success="onConnectSuccess"
     />
   </div>
 </template>

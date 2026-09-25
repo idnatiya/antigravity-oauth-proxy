@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     ports:
       - "9878:9878"
+      - "51121:51121"
     environment:
       - PORT=9878
       - ADMIN_API_KEY=${ADMIN_API_KEY:-replace-with-a-long-random-value}
@@ -14,16 +15,3 @@ services:
     volumes:
       # Mount host OAuth credentials directory for persistent auto-refresh tokens
       - ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw
-
-  # On-demand authentication helper service
-  # Run with: docker compose run --rm auth
-  auth:
-    build: .
-    container_name: antigravity-oauth-auth
-    entrypoint: ["/app/auth", "-no-browser"]
-    stdin_open: true
-    tty: true
-    volumes:
-      - ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw
-    profiles:
-      - auth

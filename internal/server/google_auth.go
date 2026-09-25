@@ -51,11 +51,12 @@ type GoogleAuthStore interface {
 }
 
 type GoogleAuth struct {
-	store  GoogleAuthStore
-	client serverhttp.HTTPClient
-	config auth.Config
-	now    func() time.Time
-	mu     sync.Mutex
+	store    GoogleAuthStore
+	client   serverhttp.HTTPClient
+	config   auth.Config
+	now      func() time.Time
+	mu       sync.Mutex
+	listener callbackListener
 }
 
 type googleAuthSession struct {
@@ -109,6 +110,7 @@ func (a *GoogleAuth) Start() (googleAuthStatus, error) {
 	if err := a.saveSession(session); err != nil {
 		return googleAuthStatus{}, err
 	}
+	a.listener.start(a)
 	return a.view(session)
 }
 
@@ -188,6 +190,7 @@ func (a *GoogleAuth) Complete(ctx context.Context, input string) (googleAuthStat
 	if err := a.store.CompleteGoogleAuth(creds); err != nil {
 		return googleAuthStatus{}, fmt.Errorf("store Google credentials: %w", err)
 	}
+	a.listener.stop()
 	return googleAuthStatus{Status: "authenticated"}, nil
 }
 
@@ -215,6 +218,7 @@ func (a *GoogleAuth) saveSession(session googleAuthSession) error {
 }
 
 func (a *GoogleAuth) finish(status string) (googleAuthStatus, error) {
+	a.listener.stop()
 	session := googleAuthSession{Status: status}
 	if err := a.saveSession(session); err != nil {
 		return googleAuthStatus{}, err

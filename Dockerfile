@@ -24,9 +24,8 @@ COPY . .
 # Copy built frontend into web/dist for go:embed
 COPY --from=frontend-builder /app/web/dist ./web/dist
 
-# Build standalone proxy and auth helper binaries
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/antigravity-oauth-proxy ./cmd/antigravity-oauth-proxy && \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/auth ./cmd/auth
+# Build standalone proxy binary
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/antigravity-oauth-proxy ./cmd/antigravity-oauth-proxy
 
 # Stage 3: Minimal runtime
 FROM alpine:latest
@@ -37,7 +36,6 @@ WORKDIR /app
 
 # Copy binaries from builder
 COPY --from=builder /build/antigravity-oauth-proxy /app/antigravity-oauth-proxy
-COPY --from=builder /build/auth /app/auth
 
 # Default port
 ENV PORT=9878

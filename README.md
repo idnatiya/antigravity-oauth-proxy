@@ -50,12 +50,15 @@ The dashboard is protected by password authentication. Default credentials are `
 git clone https://github.com/dvcrn/antigravity-oauth-proxy.git
 cd antigravity-oauth-proxy
 
-# Authenticate with Google (one-time setup)
-go run ./cmd/auth
-
 # Build and run
 make build
 ADMIN_API_KEY="replace-with-a-long-random-value" ./antigravity-oauth-proxy
+```
+
+### Using Docker Compose
+
+```bash
+docker compose up -d
 ```
 
 ### Using Go install
@@ -70,38 +73,11 @@ go install github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@
 mise use -g go:github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@latest
 ```
 
-### Using Docker Compose
+The server listens on `http://localhost:9878` by default.
 
-```bash
-# 1. Authenticate with Google (one-time setup)
-docker compose run --rm auth
+### Connecting Google Accounts
 
-# 2. Start the proxy
-docker compose up -d
-```
-
-### Using Docker CLI
-
-```bash
-# 1. Build the image
-docker build -t antigravity-oauth-proxy .
-
-# 2. Authenticate with Google (one-time setup)
-docker run -it --rm \
-  -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy \
-  --entrypoint /app/auth \
-  antigravity-oauth-proxy -no-browser
-
-# 3. Start the proxy
-docker run -d -p 9878:9878 \
-  -e ADMIN_API_KEY="replace-with-a-long-random-value" \
-  -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy:rw \
-  antigravity-oauth-proxy
-```
-
-The OAuth helper saves credentials to `~/.config/antigravity-oauth-proxy/oauth_creds.json`. The proxy reads that file and refreshes expired access tokens automatically.
-
-The server listens on `http://localhost:9878` by default. The web dashboard is available at `http://localhost:9878/dashboard/`.
+Open the web dashboard at `http://localhost:9878/dashboard/accounts` (default admin credentials: `admin` / `admin`). Click **"Connect Account"** to sign in with your Google Antigravity account directly in the browser. You can connect multiple Google accounts for automatic quota failover.
 
 Test the native Gemini endpoint with:
 
@@ -144,9 +120,9 @@ Query `GET /v1/models` to see the models available to the signed-in account.
 
 ## Authentication
 
-The OAuth helper opens a Google sign-in flow and saves an access token and refresh token. The proxy reads that file and refreshes expired access tokens automatically.
+Google accounts are managed seamlessly via the Web Dashboard at `/dashboard/accounts`. The proxy automatically stores accounts in `~/.config/antigravity-oauth-proxy/accounts/`, refreshes expired tokens, and automatically discovers each account's GCP Project ID.
 
-Set `CLOUDCODE_OAUTH_CREDS_PATH` to use a different credentials file, or provide the complete credentials JSON through `CLOUDCODE_OAUTH_CREDS` in environments without a persistent file. You can set `CLOUDCODE_GCP_PROJECT_ID` when automatic project discovery is unsuitable.
+Set `CLOUDCODE_OAUTH_CREDS_PATH` to use a custom credentials file, or provide the complete credentials JSON through `CLOUDCODE_OAUTH_CREDS` in environments without persistent disk storage. You can set `CLOUDCODE_GCP_PROJECT_ID` when automatic project discovery is unsuitable.
 
 `ADMIN_API_KEY` protects generation, admin, and MCP requests. Clients may send it as a bearer token or an `X-Goog-Api-Key` header. The `/v1/models` endpoint is public.
 

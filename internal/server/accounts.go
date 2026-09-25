@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/antigravity"
+	"github.com/dvcrn/antigravity-oauth-proxy/internal/auth"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/credentials"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/project"
@@ -53,6 +55,7 @@ type AccountPool struct {
 	mu       sync.Mutex
 	dir      string
 	accounts []*account
+	session  []byte // pending web OAuth session; in memory only
 	now      func() time.Time
 }
 
@@ -266,6 +269,73 @@ func (p *AccountPool) remove(id string) error {
 	return errors.New("account not found")
 }
 
+// GoogleAuthStore implementation: the web login adds a new account.
+
+// GetCredentials returns an error so GoogleAuth never reuses another
+// account's refresh token for a new login.
+func (p *AccountPool) GetCredentials() (*credentials.OAuthCredentials, error) {
+	return nil, errors.New("no current account")
+}
+
+func (p *AccountPool) LoadGoogleAuthSession() ([]byte, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.session, nil
+}
+
+func (p *AccountPool) SaveGoogleAuthSession(session []byte) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.session = session
+	return nil
+}
+
+func (p *AccountPool) CompleteGoogleAuth(creds *credentials.OAuthCredentials) error {
+	ctx, cancel := context.WithTimeout(context.Background(), googleAuthTimeout)
+	defer cancel()
+	info, err := auth.FetchUserInfo(ctx, creds.AccessToken)
+	if err != nil {
+		return fmt.Errorf("fetch Google account email: %w", err)
+	}
+	email := strings.TrimSpace(info.Email)
+	if email == "" || strings.ContainsAny(email, `/\`) || strings.HasPrefix(email, ".") {
+		return fmt.Errorf("unexpected Google account email %q", email)
+	}
+
+	if p.dir != "" {
+		_ = os.MkdirAll(p.dir, 0o700)
+	}
+	path := filepath.Join(p.dir, email+".json")
+	provider := credentials.NewFileProviderAt(path)
+	creds.Email = email
+	if err := provider.SaveCredentials(creds); err != nil {
+		return err
+	}
+	client := antigravity.NewClient(provider)
+	projectID, err := discoverProject(provider, client)
+	if err != nil {
+		_ = os.Remove(path)
+		return fmt.Errorf("discover project for %s: %w", email, err)
+	}
+	creds.ProjectID = projectID
+	if err := provider.SaveCredentials(creds); err != nil {
+		return err
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	a := &account{id: email, path: path, projectID: projectID, client: client}
+	for i, existing := range p.accounts {
+		if existing.id == email {
+			p.accounts[i] = a
+			return nil
+		}
+	}
+	p.accounts = append(p.accounts, a)
+	logger.Get().Info().Str("account", email).Str("project_id", projectID).Msg("Added Google account")
+	return nil
+}
+
 func discoverProject(provider credentials.CredentialsProvider, client *antigravity.Client) (string, error) {
 	loadAssist, err := client.LoadCodeAssist()
 	if err != nil {
@@ -316,7 +386,7 @@ func (s *Server) accountsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	writeAdminJSON(w, map[string]any{
 		"accounts":        s.accounts.list(),
-		"webLoginEnabled": false,
+		"webLoginEnabled": s.googleAuth != nil,
 	})
 }
 
