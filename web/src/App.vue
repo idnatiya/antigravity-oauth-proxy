@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { useRoute, RouterView } from 'vue-router'
+import { RouterView } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
-
-const route = useRoute()
 </script>
 
 <template>
-  <RouterView v-if="route.meta.guestOnly" />
-  <AppLayout v-else>
-    <RouterView />
-  </AppLayout>
+  <RouterView v-slot="{ Component, route }">
+    <template v-if="Component">
+      <component
+        :is="Component"
+        v-if="route.meta.guestOnly"
+        :key="route.fullPath"
+      />
+      <AppLayout v-else>
+        <component
+          :is="Component"
+          :key="route.fullPath"
+        />
+      </AppLayout>
+    </template>
+  </RouterView>
 </template>
