@@ -23,7 +23,7 @@ watch(
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
       <Header />
       <main ref="mainRef" class="flex-1 overflow-y-auto p-6 md:p-8 ambient-glow">
-        <div class="max-w-7xl mx-auto space-y-8 pb-12">
+        <div class="w-full space-y-8 pb-12">
           <slot />
         </div>
       </main>

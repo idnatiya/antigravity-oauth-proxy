@@ -40,7 +40,7 @@ const accountsText = computed(() => {
             PROXY
           </span>
         </div>
-        <div class="text-[11px] text-zinc-500 font-mono flex items-center gap-1.5 mt-0.5">
+        <div class="text-xs text-zinc-500 font-mono flex items-center gap-1.5 mt-0.5">
           <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
           <span>Control Plane</span>
         </div>
@@ -48,12 +48,12 @@ const accountsText = computed(() => {
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
       <RouterLink
         v-for="item in navItems"
         :key="item.to"
         :to="item.to"
-        class="group relative flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150"
+        class="group relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
         :class="[
           route.path.startsWith(item.to)
             ? 'bg-blue-500/15 text-blue-300 font-semibold border border-blue-500/25 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
@@ -66,7 +66,7 @@ const accountsText = computed(() => {
         />
         <component
           :is="item.icon"
-          class="h-4 w-4 shrink-0 transition-colors"
+          class="h-4.5 w-4.5 shrink-0 transition-colors"
           :class="route.path.startsWith(item.to) ? 'text-blue-400' : 'text-zinc-500 group-hover:text-zinc-300'"
         />
         <span class="truncate">{{ item.name }}</span>
@@ -77,7 +77,7 @@ const accountsText = computed(() => {
     <div class="p-3 border-t border-zinc-800/60 bg-[#090a0c] space-y-2.5">
       <RouterLink
         to="/accounts"
-        class="flex items-center justify-between p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all text-xs group"
+        class="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all text-xs group"
       >
         <div class="flex items-center gap-2">
           <span class="relative flex h-2 w-2">
@@ -90,17 +90,17 @@ const accountsText = computed(() => {
               :class="usageStore.account?.accounts_ready ? 'bg-emerald-500' : 'bg-amber-500'"
             />
           </span>
-          <span class="text-zinc-400 group-hover:text-zinc-200">OAuth Pool</span>
+          <span class="text-zinc-400 group-hover:text-zinc-200 font-medium">OAuth Pool</span>
         </div>
         <span class="font-mono text-zinc-300 font-semibold group-hover:text-white">{{ accountsText }}</span>
       </RouterLink>
 
-      <div class="flex items-center justify-between px-2 py-1 text-[11px] text-zinc-500">
+      <div class="flex items-center justify-between px-2.5 py-1 text-xs text-zinc-500">
         <span class="flex items-center gap-1.5 truncate">
-          <CircleDot class="h-3 w-3 text-zinc-600" />
+          <CircleDot class="h-3.5 w-3.5 text-zinc-600" />
           <span>{{ authStore.user?.username || 'admin' }}</span>
         </span>
-        <span class="font-mono text-[10px] text-zinc-600 uppercase">v1beta</span>
+        <span class="font-mono text-[11px] text-zinc-600 uppercase">v1beta</span>
       </div>
     </div>
   </aside>

@@ -30,10 +30,10 @@ defineProps<{
 
     <div>
       <div class="flex items-center justify-between">
-        <span class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">{{ title }}</span>
+        <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{{ title }}</span>
         <div
           v-if="icon"
-          class="h-8 w-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 duration-200"
+          class="h-9 w-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 duration-200"
           :class="{
             'bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_12px_-2px_rgba(59,130,246,0.25)]': color === 'blue' || !color,
             'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_12px_-2px_rgba(16,185,129,0.25)]': color === 'green',
@@ -42,12 +42,12 @@ defineProps<{
             'bg-red-500/10 text-red-400 border border-red-500/20 shadow-[0_0_12px_-2px_rgba(239,68,68,0.25)]': color === 'red',
           }"
         >
-          <component :is="icon" class="h-4 w-4" />
+          <component :is="icon" class="h-4.5 w-4.5" />
         </div>
       </div>
 
       <div class="mt-4 flex items-baseline justify-between">
-        <div class="text-2xl font-bold tracking-tight text-white font-mono">{{ value }}</div>
+        <div class="text-3xl font-bold tracking-tight text-white font-mono">{{ value }}</div>
         <div v-if="trend" class="text-xs font-mono text-emerald-400 font-medium flex items-center gap-1">
           <span>↑</span>
           <span>{{ trend }}</span>
@@ -55,7 +55,7 @@ defineProps<{
       </div>
     </div>
 
-    <div v-if="subtitle" class="mt-3 text-xs text-zinc-400/80 truncate font-mono">
+    <div v-if="subtitle" class="mt-3 text-sm text-zinc-400 font-mono truncate">
       {{ subtitle }}
     </div>
   </Card>

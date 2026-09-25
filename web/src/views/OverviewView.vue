@@ -67,11 +67,11 @@ const formattedTokens = computed(() => {
             </span>
           </div>
 
-          <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
             <span>Antigravity LLM Proxy Control Plane</span>
           </h2>
 
-          <p class="text-xs text-zinc-400 max-w-2xl leading-relaxed">
+          <p class="text-sm text-zinc-400 max-w-3xl leading-relaxed">
             High-performance bridge converting OpenAI and Gemini API protocols to Google Cloud Code Assist. Zero cold starts, automatic token management, and pooled multi-account rotation.
           </p>
         </div>
@@ -79,22 +79,22 @@ const formattedTokens = computed(() => {
         <!-- Quick Action Shortcuts -->
         <div class="flex items-center flex-wrap gap-2.5 shrink-0">
           <RouterLink to="/playground">
-            <Button size="sm" class="bg-blue-600 hover:bg-blue-500 text-white gap-1.5 text-xs h-9 shadow-md shadow-blue-500/20">
-              <FlaskConical class="h-3.5 w-3.5" />
+            <Button size="sm" class="bg-blue-600 hover:bg-blue-500 text-white gap-2 text-sm h-9.5 shadow-md shadow-blue-500/20 font-medium">
+              <FlaskConical class="h-4 w-4" />
               <span>Test Playground</span>
             </Button>
           </RouterLink>
 
           <RouterLink to="/requests">
-            <Button variant="outline" size="sm" class="bg-zinc-900/80 border-zinc-800/80 hover:bg-zinc-800 text-zinc-300 gap-1.5 text-xs h-9">
-              <ListFilter class="h-3.5 w-3.5 text-zinc-400" />
+            <Button variant="outline" size="sm" class="bg-zinc-900/80 border-zinc-800/80 hover:bg-zinc-800 text-zinc-300 gap-2 text-sm h-9.5 font-medium">
+              <ListFilter class="h-4 w-4 text-zinc-400" />
               <span>Telemetry Logs</span>
             </Button>
           </RouterLink>
 
           <RouterLink to="/accounts">
-            <Button variant="outline" size="sm" class="bg-zinc-900/80 border-zinc-800/80 hover:bg-zinc-800 text-zinc-300 gap-1.5 text-xs h-9">
-              <Users class="h-3.5 w-3.5 text-zinc-400" />
+            <Button variant="outline" size="sm" class="bg-zinc-900/80 border-zinc-800/80 hover:bg-zinc-800 text-zinc-300 gap-2 text-sm h-9.5 font-medium">
+              <Users class="h-4 w-4 text-zinc-400" />
               <span>OAuth Pool</span>
             </Button>
           </RouterLink>
@@ -105,8 +105,8 @@ const formattedTokens = computed(() => {
     <!-- Controls Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
       <div>
-        <h3 class="text-base font-semibold text-white tracking-tight">System Performance</h3>
-        <p class="text-xs text-zinc-400">Aggregate telemetry across all proxy completions and streaming channels</p>
+        <h3 class="text-lg font-semibold text-white tracking-tight">System Performance</h3>
+        <p class="text-sm text-zinc-400">Aggregate telemetry across all proxy completions and streaming channels</p>
       </div>
 
       <!-- Time Range Selector -->
@@ -117,7 +117,7 @@ const formattedTokens = computed(() => {
             :key="r.value"
             :value="r.value"
             :data-state="usageStore.timeRange === r.value ? 'active' : 'inactive'"
-            class="text-xs px-3 py-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-white font-medium"
+            class="text-xs px-3.5 py-1.5 data-[state=active]:bg-zinc-800 data-[state=active]:text-white font-medium"
           >
             {{ r.label }}
           </TabsTrigger>

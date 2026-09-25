@@ -128,19 +128,19 @@ function formatDisplayValue(val: number): string {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
-          <h3 class="text-sm font-semibold text-white tracking-tight">API Activity Trends</h3>
-          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-800 text-zinc-300">
+          <h3 class="text-base font-semibold text-white tracking-tight">API Activity Trends</h3>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-zinc-800 text-zinc-300">
             Interactive
           </span>
         </div>
-        <p class="text-xs text-zinc-400 mt-0.5">Real-time throughput metrics over the selected period</p>
+        <p class="text-sm text-zinc-400 mt-0.5">Real-time throughput metrics over the selected period</p>
       </div>
 
       <!-- Metric Toggle Buttons -->
       <div class="flex items-center p-1 rounded-lg bg-zinc-900/90 border border-zinc-800/80 self-start sm:self-auto">
         <button
           @click="activeMetric = 'requests'"
-          class="px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer"
+          class="px-3.5 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer"
           :class="[
             activeMetric === 'requests'
               ? 'bg-blue-600 text-white shadow-sm font-semibold'
@@ -151,7 +151,7 @@ function formatDisplayValue(val: number): string {
         </button>
         <button
           @click="activeMetric = 'tokens'"
-          class="px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer"
+          class="px-3.5 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer"
           :class="[
             activeMetric === 'tokens'
               ? 'bg-purple-600 text-white shadow-sm font-semibold'
@@ -289,18 +289,18 @@ function formatDisplayValue(val: number): string {
     <!-- Chart Footer Metrics Strip -->
     <div
       v-if="!loading && chartPoints.length > 0"
-      class="pt-3 border-t border-zinc-800/60 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-mono text-zinc-400"
+      class="pt-3.5 border-t border-zinc-800/60 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm font-mono text-zinc-400"
     >
       <div>
-        <span class="text-zinc-500 text-[11px] block">Total Volume:</span>
+        <span class="text-zinc-500 text-xs block">Total Volume:</span>
         <span class="text-zinc-200 font-semibold">{{ formatDisplayValue(totalMetricValue) }}</span>
       </div>
       <div>
-        <span class="text-zinc-500 text-[11px] block">Peak Record:</span>
+        <span class="text-zinc-500 text-xs block">Peak Record:</span>
         <span class="text-zinc-200 font-semibold">{{ formatDisplayValue(peakMetricValue) }}</span>
       </div>
       <div class="hidden sm:block">
-        <span class="text-zinc-500 text-[11px] block">Interval Points:</span>
+        <span class="text-zinc-500 text-xs block">Interval Points:</span>
         <span class="text-zinc-200 font-semibold">{{ chartPoints.length }} intervals</span>
       </div>
     </div>

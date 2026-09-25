@@ -64,7 +64,7 @@ async function handleChangePassword() {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-4xl">
+  <div class="space-y-6 w-full">
     <div>
       <h2 class="text-base font-semibold text-white tracking-tight">Security & Credentials</h2>
       <p class="text-xs text-zinc-500">Manage dashboard administrative authentication and token status</p>
