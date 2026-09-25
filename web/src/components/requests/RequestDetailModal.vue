@@ -122,7 +122,7 @@ function copyJson() {
             <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1.5 font-sans font-medium">
               <Clock class="h-3 w-3 text-zinc-400" /> Latency
             </span>
-            <div class="text-base font-semibold text-white font-mono">{{ (record.latency_ms ?? 0).toLocaleString() }} ms</div>
+            <div class="text-base font-semibold text-white font-mono">{{ ((record.latency_ms ?? record.duration_ms) ?? 0).toLocaleString() }} ms</div>
           </div>
 
           <div class="p-3.5 rounded-xl bg-[#0d0e11] border border-zinc-800/80 space-y-1">
@@ -162,10 +162,10 @@ function copyJson() {
             <Badge
               variant="outline"
               class="font-mono text-[10px] gap-1"
-              :class="record.is_stream ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-zinc-400 border-zinc-800'"
+              :class="(record.is_stream || record.stream) ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-zinc-400 border-zinc-800'"
             >
-              <Radio v-if="record.is_stream" class="h-2.5 w-2.5 text-blue-400 animate-pulse" />
-              {{ record.is_stream ? 'Server-Sent Events (SSE)' : 'Standard JSON' }}
+              <Radio v-if="record.is_stream || record.stream" class="h-2.5 w-2.5 text-blue-400 animate-pulse" />
+              {{ (record.is_stream || record.stream) ? 'Server-Sent Events (SSE)' : 'Standard JSON' }}
             </Badge>
           </div>
           <Separator class="bg-zinc-800/60" />

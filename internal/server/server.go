@@ -223,6 +223,7 @@ func (s *Server) recordUsage(endpoint, model string, stream bool, statusCode int
 	if s.usageStore == nil {
 		return
 	}
+	durMs := duration.Milliseconds()
 	totalTokens := promptTokens + completionTokens
 	record := &usage.RequestRecord{
 		ID:               uuid.New().String(),
@@ -230,8 +231,10 @@ func (s *Server) recordUsage(endpoint, model string, stream bool, statusCode int
 		Endpoint:         endpoint,
 		Model:            model,
 		Stream:           stream,
+		IsStream:         stream,
 		StatusCode:       statusCode,
-		DurationMs:       duration.Milliseconds(),
+		DurationMs:       durMs,
+		LatencyMs:        durMs,
 		PromptTokens:     promptTokens,
 		CompletionTokens: completionTokens,
 		TotalTokens:      totalTokens,

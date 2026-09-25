@@ -44,6 +44,10 @@ func (m *MemoryStore) RecordRequest(ctx context.Context, req *RequestRecord) err
 		// Evict oldest
 		m.records = m.records[1:]
 	}
+	if req.LatencyMs == 0 && req.DurationMs > 0 {
+		req.LatencyMs = req.DurationMs
+	}
+	req.IsStream = req.Stream
 	m.records = append(m.records, req)
 	return nil
 }

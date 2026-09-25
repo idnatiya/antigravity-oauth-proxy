@@ -54,11 +54,13 @@ export interface RequestRecord {
   endpoint: string
   model: string
   status_code: number
-  latency_ms: number
+  latency_ms?: number
+  duration_ms?: number
   prompt_tokens: number
   completion_tokens: number
   total_tokens: number
-  is_stream: boolean
+  is_stream?: boolean
+  stream?: boolean
   error_message?: string
   client_ip?: string
 }

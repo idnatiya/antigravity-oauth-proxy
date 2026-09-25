@@ -13,8 +13,10 @@ type RequestRecord struct {
 	Endpoint         string    `json:"endpoint"`
 	Model            string    `json:"model"`
 	Stream           bool      `json:"stream"`
+	IsStream         bool      `json:"is_stream"`
 	StatusCode       int       `json:"status_code"`
 	DurationMs       int64     `json:"duration_ms"`
+	LatencyMs        int64     `json:"latency_ms"`
 	PromptTokens     int       `json:"prompt_tokens"`
 	CompletionTokens int       `json:"completion_tokens"`
 	TotalTokens      int       `json:"total_tokens"`

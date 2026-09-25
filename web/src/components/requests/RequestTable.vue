@@ -70,7 +70,8 @@ function getStatusBadge(code: number): { label: string; class: string; dot: stri
 }
 
 function formatLatency(ms?: number | null): string {
-  if (ms === undefined || ms === null) return '0ms'
+  if (ms === undefined || ms === null) return '–'
+  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`
   return `${ms.toLocaleString()}ms`
 }
 
@@ -171,7 +172,7 @@ function onLimitChange(e: Event) {
                 {{ r.endpoint }}
               </span>
               <Radio
-                v-if="r.is_stream"
+                v-if="r.is_stream || r.stream"
                 class="h-3.5 w-3.5 text-blue-400 shrink-0"
                 title="Streaming SSE"
               />
@@ -198,8 +199,8 @@ function onLimitChange(e: Event) {
           </TableCell>
 
           <!-- Latency -->
-          <TableCell class="text-right py-3 font-mono text-xs" :class="getLatencyClass(r.latency_ms)">
-            {{ formatLatency(r.latency_ms) }}
+          <TableCell class="text-right py-3 font-mono text-xs" :class="getLatencyClass(r.latency_ms ?? r.duration_ms)">
+            {{ formatLatency(r.latency_ms ?? r.duration_ms) }}
           </TableCell>
 
           <!-- Tokens -->

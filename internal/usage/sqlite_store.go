@@ -403,6 +403,8 @@ func (s *SQLiteStore) GetRequests(ctx context.Context, filter RequestFilter) ([]
 			return nil, 0, err
 		}
 		r.Stream = streamInt == 1
+		r.IsStream = r.Stream
+		r.LatencyMs = r.DurationMs
 		records = append(records, &r)
 	}
 
