@@ -23,38 +23,70 @@ The MCP server at `/mcp` gives agents tools to discover models available to your
 
 Use the native Gemini endpoint when your client supports it. The OpenAI-compatible endpoint is available for clients that only speak the OpenAI protocol.
 
+## Web Dashboard
+
+The proxy includes a built-in web dashboard at `/dashboard/` for monitoring and management. The Vue 3 frontend is compiled and embedded directly into the Go binary — no separate Node.js runtime is needed at deploy time.
+
+**Dashboard features:**
+
+- **Overview** — Real-time request stats, usage charts, and top models at a glance
+- **Playground** — Send prompts to any available model and view streamed responses interactively
+- **Requests** — Browse and filter all proxied API requests with full detail modals
+- **Models** — Search and explore all models available to the signed-in account
+- **Accounts** — View connected Google OAuth accounts and their token status
+- **Security** — Change the dashboard password and review active session details
+
+| Overview | Playground | Models |
+| :---: | :---: | :---: |
+| ![Overview](docs/screenshots/dashboard_overview.jpg) | ![Playground](docs/screenshots/dashboard_playground.jpg) | ![Models](docs/screenshots/dashboard_models.jpg) |
+
+The dashboard is protected by password authentication. Default credentials are `admin` / `admin` — change the password on first login via the Security page.
+
 ## Quick start
 
-Install the proxy with npm:
+### From source
 
 ```bash
-npm install -g antigravity-oauth-proxy
+git clone https://github.com/dvcrn/antigravity-oauth-proxy.git
+cd antigravity-oauth-proxy
+
+# Authenticate with Google (one-time setup)
+go run ./cmd/auth
+
+# Build and run
+make build
+ADMIN_API_KEY="replace-with-a-long-random-value" ./antigravity-oauth-proxy
 ```
 
+### Using Go install
 
-### Install via Docker
-
-**Using Docker Compose (Recommended):**
 ```bash
+go install github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@latest
+```
 
+### Using mise
 
+```bash
+mise use -g go:github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@latest
+```
 
-# 1. Login OAuth (one-time setup)
+### Using Docker Compose
+
+```bash
+# 1. Authenticate with Google (one-time setup)
 docker compose run --rm auth
 
-
-# 2. Start the proxy in the background
+# 2. Start the proxy
 docker compose up -d
 ```
 
-**Using Docker CLI:**
+### Using Docker CLI
+
 ```bash
 # 1. Build the image
 docker build -t antigravity-oauth-proxy .
 
-
-
-# 2. Login OAuth (one-time setup)
+# 2. Authenticate with Google (one-time setup)
 docker run -it --rm \
   -v ~/.config/antigravity-oauth-proxy:/root/.config/antigravity-oauth-proxy \
   --entrypoint /app/auth \
@@ -67,31 +99,11 @@ docker run -d -p 9878:9878 \
   antigravity-oauth-proxy
 ```
 
-### Other installation options
+The OAuth helper saves credentials to `~/.config/antigravity-oauth-proxy/oauth_creds.json`. The proxy reads that file and refreshes expired access tokens automatically.
 
-```bash
-# mise
-mise use -g go:github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@latest
+The server listens on `http://localhost:9878` by default. The web dashboard is available at `http://localhost:9878/dashboard/`.
 
-# Go
-go install github.com/dvcrn/antigravity-oauth-proxy/cmd/antigravity-oauth-proxy@latest
-```
-
-The OAuth helper currently runs from the source tree. Clone the repository once and complete the browser login:
-
-```bash
-git clone https://github.com/dvcrn/antigravity-oauth-proxy.git
-cd antigravity-oauth-proxy
-go run ./cmd/auth
-```
-
-This saves credentials to `~/.config/antigravity-oauth-proxy/oauth_creds.json`. Start the installed proxy with a key of your choice:
-
-```bash
-ADMIN_API_KEY="replace-with-a-long-random-value" antigravity-oauth-proxy
-```
-
-The server listens on `http://localhost:9878` by default. Test the native Gemini endpoint with:
+Test the native Gemini endpoint with:
 
 ```bash
 curl "http://localhost:9878/v1beta/models/gemini-3-flash:generateContent" \
@@ -140,6 +152,8 @@ Set `CLOUDCODE_OAUTH_CREDS_PATH` to use a different credentials file, or provide
 
 ## Endpoints
 
+### Proxy API
+
 | Endpoint | Purpose |
 | --- | --- |
 | `POST /v1beta/models/{model}:generateContent` | Gemini-compatible non-streaming generation |
@@ -147,6 +161,24 @@ Set `CLOUDCODE_OAUTH_CREDS_PATH` to use a different credentials file, or provide
 | `POST /v1/chat/completions` | OpenAI-compatible chat completions |
 | `GET /v1/models` | Models available to the signed-in account |
 | `POST /mcp` | Stateless MCP server with `ask_gemini` and `ask_gemini_models` |
+
+### Dashboard
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /dashboard/` | Web dashboard UI |
+| `POST /api/auth/login` | Dashboard authentication |
+| `POST /api/auth/change-password` | Change dashboard password |
+| `GET /api/accounts` | List connected OAuth accounts |
+| `POST /api/accounts/test` | Test an account's connectivity |
+| `GET /api/usage/stats` | Aggregated usage statistics |
+| `GET /api/usage/requests` | Paginated request history |
+| `POST /api/playground/chat` | Playground chat completions |
+
+### Workers Admin
+
+| Endpoint | Purpose |
+| --- | --- |
 | `POST /admin/auth/start` | Start Workers Google authorization |
 | `GET /admin/auth/status` | Read the Workers authorization state |
 | `POST /admin/auth/status` | Exchange an authorization code and store tokens |
@@ -192,6 +224,22 @@ The client discovers these tools after it connects:
 Call `ask_gemini_models` first when the model ID is not already known. Its results reflect the models currently available to the signed-in Antigravity account.
 
 `ask_gemini` is one-shot. It does not retain conversation history, so `prompt` must include all context needed for that call. The returned `model` may differ from `requested_model` when the proxy resolves a model variant or falls back after an upstream 404.
+
+## macOS LaunchAgent
+
+Run the proxy as a background service that starts automatically on login:
+
+```bash
+./install-launchagent.sh
+```
+
+The script creates a LaunchAgent plist, symlinks it to `~/Library/LaunchAgents/`, and starts the service immediately. It auto-restarts after crashes and logs output to `~/Library/Logs/antigravity-oauth-proxy.log`.
+
+To uninstall:
+
+```bash
+./uninstall-launchagent.sh
+```
 
 ## Cloudflare Workers
 
@@ -267,7 +315,30 @@ curl "$BASE_URL/admin/status" \
 ## Development
 
 ```bash
-mise run format
-mise run test
+# Run backend + frontend dev servers in parallel (Air live-reload + Vite HMR)
+make dev
+
+# Or run them separately:
+make dev-be     # Go backend with Air live-reload
+make dev-fe     # Vite frontend dev server with HMR
+
+# Build production binary (includes embedded Vue 3 dashboard)
+make build
+
+# Run all tests
+make test
+
+# Format Go code
+make format
+
+# Clean build artifacts
+make clean
+```
+
+Alternatively, use [mise](https://mise.jdx.dev/):
+
+```bash
 mise run build
+mise run test
+mise run format
 ```

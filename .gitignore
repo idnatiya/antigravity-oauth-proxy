@@ -15,7 +15,5 @@ web/dist/
 
 /antigravity-oauth-proxy
 /antigravity-oauth-proxy.exe
-npm/antigravity-oauth-proxy
-npm/antigravity-oauth-proxy.exe
 
 sh.d.antigravity-oauth-proxy.plist

@@ -14,10 +14,6 @@ run = "go run ./cmd/antigravity-oauth-proxy"
 description = "Run all tests"
 run = "go test -v ./..."
 
-[tasks.publish]
-description = "Publish the npm wrapper package in npm/"
-run = "cd npm/ && npm publish"
-
 [tasks.format]
 description = "Format Go code"
 run = [
