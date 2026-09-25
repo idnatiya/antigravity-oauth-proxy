@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Radio, Sparkles, Users, FlaskConical } from '@lucide/vue'
+import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Sparkles, Users, FlaskConical, CircleDot } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsageStore } from '@/stores/usageStore'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -29,61 +27,80 @@ const accountsText = computed(() => {
 </script>
 
 <template>
-  <aside class="w-64 border-r border-[#24262e] bg-[#101114] flex flex-col shrink-0 select-none">
-    <!-- Brand -->
-    <div class="h-16 px-6 border-b border-[#24262e] flex items-center gap-3">
-      <div class="h-8 w-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-        <Sparkles class="h-4 w-4" />
+  <aside class="w-64 border-r border-zinc-800/60 bg-[#0e0f12] flex flex-col shrink-0 select-none z-30">
+    <!-- Brand Header -->
+    <div class="h-16 px-5 border-b border-zinc-800/60 flex items-center gap-3">
+      <div class="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]">
+        <Sparkles class="h-4.5 w-4.5" />
       </div>
       <div>
         <div class="font-semibold text-sm tracking-tight text-white flex items-center gap-1.5">
-          Antigravity
-          <Badge variant="outline" class="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border-blue-500/20">
-            Proxy
-          </Badge>
+          <span>Antigravity</span>
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30">
+            PROXY
+          </span>
         </div>
-        <div class="text-[11px] text-zinc-500 font-mono">Control Plane</div>
+        <div class="text-[11px] text-zinc-500 font-mono flex items-center gap-1.5 mt-0.5">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          <span>Control Plane</span>
+        </div>
       </div>
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 p-3 space-y-1">
+    <nav class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
       <RouterLink
         v-for="item in navItems"
         :key="item.to"
         :to="item.to"
-        class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+        class="group relative flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150"
         :class="[
           route.path.startsWith(item.to)
-            ? 'bg-blue-600 text-white shadow-sm'
-            : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1a1c22]'
+            ? 'bg-blue-500/15 text-blue-300 font-semibold border border-blue-500/25 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
+            : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 border border-transparent'
         ]"
       >
-        <component :is="item.icon" class="h-4 w-4 shrink-0" />
-        <span>{{ item.name }}</span>
+        <span
+          v-if="route.path.startsWith(item.to)"
+          class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"
+        />
+        <component
+          :is="item.icon"
+          class="h-4 w-4 shrink-0 transition-colors"
+          :class="route.path.startsWith(item.to) ? 'text-blue-400' : 'text-zinc-500 group-hover:text-zinc-300'"
+        />
+        <span class="truncate">{{ item.name }}</span>
       </RouterLink>
     </nav>
 
     <!-- System Status Footer -->
-    <div class="p-4 border-t border-[#24262e] bg-[#0d0e11] space-y-3">
-      <div class="flex items-center justify-between text-xs text-zinc-400">
-        <span class="flex items-center gap-1.5">
-          <Radio
-            class="h-3 w-3"
-            :class="usageStore.account?.accounts_ready ? 'text-emerald-400 animate-pulse' : 'text-amber-400'"
-          />
-          <span>Google Accounts</span>
-        </span>
-        <RouterLink to="/accounts" class="font-mono text-zinc-300 font-medium hover:text-white">{{ accountsText }}</RouterLink>
-      </div>
-
-      <Separator class="bg-[#1e2027]" />
-
-      <div class="flex items-center justify-between text-xs">
-        <div class="truncate text-zinc-400">
-          <span class="text-zinc-500">User: </span>
-          <span class="font-medium text-zinc-200">{{ authStore.user?.username || 'admin' }}</span>
+    <div class="p-3 border-t border-zinc-800/60 bg-[#090a0c] space-y-2.5">
+      <RouterLink
+        to="/accounts"
+        class="flex items-center justify-between p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all text-xs group"
+      >
+        <div class="flex items-center gap-2">
+          <span class="relative flex h-2 w-2">
+            <span
+              v-if="usageStore.account?.accounts_ready"
+              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+            />
+            <span
+              class="relative inline-flex rounded-full h-2 w-2"
+              :class="usageStore.account?.accounts_ready ? 'bg-emerald-500' : 'bg-amber-500'"
+            />
+          </span>
+          <span class="text-zinc-400 group-hover:text-zinc-200">OAuth Pool</span>
         </div>
+        <span class="font-mono text-zinc-300 font-semibold group-hover:text-white">{{ accountsText }}</span>
+      </RouterLink>
+
+      <div class="flex items-center justify-between px-2 py-1 text-[11px] text-zinc-500">
+        <span class="flex items-center gap-1.5 truncate">
+          <CircleDot class="h-3 w-3 text-zinc-600" />
+          <span>{{ authStore.user?.username || 'admin' }}</span>
+        </span>
+        <span class="font-mono text-[10px] text-zinc-600 uppercase">v1beta</span>
       </div>
     </div>
   </aside>

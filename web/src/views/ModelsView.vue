@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Search } from '@lucide/vue'
+import { useRouter } from 'vue-router'
+import { Search, FlaskConical } from '@lucide/vue'
 import { useUsageStore } from '@/stores/usageStore'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 
+const router = useRouter()
 const usageStore = useUsageStore()
 const search = ref('')
 
@@ -37,6 +41,10 @@ const filteredModels = computed(() => {
   if (!q) return usageStore.models
   return usageStore.models.filter(m => m.id.toLowerCase().includes(q) || m.owned_by.toLowerCase().includes(q))
 })
+
+function testModel(modelId: string) {
+  router.push({ path: '/playground', query: { model: modelId } })
+}
 </script>
 
 <template>
@@ -44,7 +52,7 @@ const filteredModels = computed(() => {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h2 class="text-base font-semibold text-white tracking-tight">AI Model Catalog</h2>
-        <p class="text-xs text-zinc-500">
+        <p class="text-xs text-zinc-400">
           {{ usageStore.models.length }} models accessible via OpenAI-compatible API endpoint
         </p>
       </div>
@@ -56,14 +64,14 @@ const filteredModels = computed(() => {
           v-model="search"
           type="text"
           placeholder="Search models..."
-          class="bg-[#202227] border-[#2c2e36] pl-9 text-xs h-9"
+          class="bg-[#121316] border-zinc-800/80 pl-9 text-xs h-9 focus-visible:ring-blue-500"
         />
       </div>
     </div>
 
-    <!-- Models Grid -->
-    <div v-if="usageStore.loadingModels" class="py-16 text-center text-zinc-500 text-xs font-mono animate-pulse">
-      Loading models catalog...
+    <!-- Models Grid Skeleton -->
+    <div v-if="usageStore.loadingModels" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <Skeleton v-for="i in 6" :key="i" class="h-44 rounded-xl bg-zinc-900/60 border border-zinc-800/60" />
     </div>
 
     <div v-else-if="filteredModels.length === 0" class="py-16 text-center text-zinc-500 text-xs font-mono">
@@ -74,7 +82,7 @@ const filteredModels = computed(() => {
       <Card
         v-for="m in filteredModels"
         :key="m.id"
-        class="p-5 bg-[#202227] border-[#2c2e36] hover:border-[#383a45] transition-all flex flex-col justify-between space-y-4"
+        class="p-5 bg-[#121316] border-zinc-800/80 hover:border-zinc-700/80 transition-all flex flex-col justify-between space-y-4 group shadow-sm hover:shadow-lg hover:shadow-black/30"
       >
         <div class="space-y-2">
           <div class="flex items-center justify-between">
@@ -86,16 +94,24 @@ const filteredModels = computed(() => {
             </Badge>
           </div>
 
-          <h3 class="font-mono text-sm font-semibold text-white tracking-tight break-all">
+          <h3 class="font-mono text-sm font-semibold text-white tracking-tight break-all group-hover:text-blue-300 transition-colors">
             {{ m.id }}
           </h3>
         </div>
 
         <div class="space-y-3">
-          <Separator class="bg-[#2a2d34]" />
+          <Separator class="bg-zinc-800/60" />
           <div class="flex items-center justify-between text-xs text-zinc-400">
-            <span class="text-zinc-500">Provider: <span class="text-zinc-300 font-mono">{{ m.owned_by }}</span></span>
-            <span class="text-[11px] font-mono text-blue-400">OpenAI Compatible</span>
+            <span class="text-zinc-500 text-[11px]">Provider: <span class="text-zinc-300 font-mono">{{ m.owned_by }}</span></span>
+            <Button
+              variant="outline"
+              size="sm"
+              @click="testModel(m.id)"
+              class="h-7 px-2.5 text-xs bg-zinc-900/80 border-zinc-800 hover:bg-blue-600 hover:text-white hover:border-blue-500 gap-1.5 transition-all text-zinc-300"
+            >
+              <FlaskConical class="h-3 w-3" />
+              <span>Test</span>
+            </Button>
           </div>
         </div>
       </Card>

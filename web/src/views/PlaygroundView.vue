@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   Play,
   Square,
@@ -22,6 +23,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 
+const route = useRoute()
 const usageStore = useUsageStore()
 
 // State
@@ -230,7 +232,18 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+function applyRouteModel() {
+  if (route.query.model && typeof route.query.model === 'string') {
+    selectedModel.value = route.query.model
+  }
+}
+
+watch(() => route.query.model, () => {
+  applyRouteModel()
+})
+
 onMounted(() => {
+  applyRouteModel()
   if (usageStore.models.length === 0) {
     usageStore.fetchModels().catch(() => {})
   }

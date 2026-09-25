@@ -18,12 +18,12 @@ watch(
 </script>
 
 <template>
-  <div class="flex h-screen w-screen overflow-hidden bg-[#141518]">
+  <div class="flex h-screen w-screen overflow-hidden bg-[#0b0c0e]">
     <Sidebar />
-    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
       <Header />
-      <main ref="mainRef" class="flex-1 overflow-y-auto p-8 bg-[#141518]">
-        <div class="max-w-7xl mx-auto space-y-8">
+      <main ref="mainRef" class="flex-1 overflow-y-auto p-6 md:p-8 ambient-glow">
+        <div class="max-w-7xl mx-auto space-y-8 pb-12">
           <slot />
         </div>
       </main>
