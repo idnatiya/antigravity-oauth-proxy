@@ -71,8 +71,8 @@ function openDeleteModal(acc: AccountItem) {
   showDeleteModal.value = true
 }
 
-function closeDeleteModal() {
-  if (busy.value) return
+function closeDeleteModal(force = false) {
+  if (busy.value && !force) return
   showDeleteModal.value = false
   accountToDelete.value = null
 }
@@ -83,9 +83,9 @@ async function confirmDeleteAccount() {
   await run(async () => {
     await apiClient.delete('/api/accounts', { params: { id } })
     successMessage.value = `Account ${id} removed successfully.`
-    closeDeleteModal()
     await load()
   })
+  closeDeleteModal(true)
 }
 
 // Account testing states
@@ -150,7 +150,7 @@ const lowestQuotaRemaining = computed(() => {
     if (acc.coolingUntil) continue
     for (const group of acc.quota?.groups || []) {
       for (const bucket of group.buckets || []) {
-        if (bucket.remainingFraction !== undefined) {
+        if (bucket.remainingFraction !== undefined && bucket.remainingFraction !== null) {
           const pct = Math.round(bucket.remainingFraction * 100)
           if (minPct === null || pct < minPct) {
             minPct = pct
@@ -159,7 +159,7 @@ const lowestQuotaRemaining = computed(() => {
       }
     }
   }
-  if (minPct === null) return '–'
+  if (minPct === null) return accounts.value.length > 0 ? 'Standard' : '–'
   return `${minPct}%`
 })
 

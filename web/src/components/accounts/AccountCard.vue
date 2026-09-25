@@ -110,6 +110,29 @@ const initial = computed(() => {
 })
 
 const isPrimary = computed(() => props.index === 0)
+
+// Detect if account is non-Google AI Pro (Free / Standard Tier)
+const isNonPro = computed(() => {
+  const err = props.account.quotaError?.toLowerCase() || ''
+  if (err.includes('no google ai pro') || err.includes('403') || err.includes('permission') || err.includes('subscription')) {
+    return true
+  }
+  if (props.account.quota?.groups?.length) {
+    const hasClaude = props.account.quota.groups.some(g => g.displayName.toLowerCase().includes('claude'))
+    return !hasClaude
+  }
+  return !props.account.quota?.groups?.length
+})
+
+const hasClaudeGroup = computed(() => {
+  return props.account.quota?.groups?.some(g => g.displayName.toLowerCase().includes('claude')) ?? false
+})
+
+const isGenuineError = computed(() => {
+  if (!props.account.quotaError) return false
+  const err = props.account.quotaError.toLowerCase()
+  return !err.includes('no google ai pro') && !err.includes('403') && !err.includes('permission') && !err.includes('subscription')
+})
 </script>
 
 <template>
@@ -178,6 +201,23 @@ const isPrimary = computed(() => props.index === 0)
         <!-- Priority & Status Badges -->
         <div class="shrink-0 flex flex-col items-end gap-1.5">
           <div class="flex items-center gap-2">
+            <!-- Plan Tier Badge -->
+            <Badge
+              v-if="!isNonPro"
+              variant="outline"
+              class="border-purple-500/30 bg-purple-500/10 text-purple-300 font-sans text-[10px] flex items-center gap-1"
+            >
+              <Sparkles class="h-2.5 w-2.5 text-purple-400" />
+              AI Pro
+            </Badge>
+            <Badge
+              v-else
+              variant="outline"
+              class="border-zinc-700 bg-zinc-800/80 text-zinc-400 font-sans text-[10px]"
+            >
+              Standard Free
+            </Badge>
+
             <!-- Pool Priority Badge -->
             <Badge
               v-if="isPrimary"
@@ -349,11 +389,66 @@ const isPrimary = computed(() => props.index === 0)
             </div>
           </div>
         </div>
+
+        <!-- Claude & GPT locked row if not in Pro account -->
+        <div v-if="!hasClaudeGroup" class="pt-3 border-t border-[#282a32] space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-xs font-semibold text-zinc-400">
+              <Bot class="h-3.5 w-3.5 text-zinc-500" />
+              <span>Claude & GPT Models</span>
+            </div>
+            <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-600">
+              Exclusive
+            </span>
+          </div>
+          <div class="p-3 rounded-xl bg-[#141518] border border-[#282a32] flex items-center justify-between">
+            <span class="text-[11px] text-zinc-400">Claude 3.5/3.7 Sonnet & Opus</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono text-amber-300/90 bg-amber-500/10 border border-amber-500/20 flex items-center gap-1">
+              <Lock class="h-3 w-3 text-amber-400" />
+              Google AI Pro Required
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- Quota Fetch Error -->
+      <!-- Clean Non-Pro Account Info State (Free Tier / No AI Pro Subscription) -->
+      <div v-else-if="isNonPro" class="p-5 space-y-3">
+        <div class="p-4 rounded-xl bg-[#16181d] border border-zinc-800/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="h-8 w-8 rounded-lg bg-zinc-800/90 border border-zinc-700/60 flex items-center justify-center text-zinc-400">
+                <Sparkles class="h-4 w-4 text-blue-400" />
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-zinc-200">Standard Google Account</div>
+                <div class="text-[11px] text-zinc-400">Free Tier (No Google AI Pro plan)</div>
+              </div>
+            </div>
+            <Badge variant="outline" class="text-[10px] text-zinc-400 border-zinc-700 bg-zinc-800/50">
+              Free Quota
+            </Badge>
+          </div>
+
+          <p class="text-[11px] text-zinc-400 leading-relaxed">
+            Detailed rate limit windows (5-hour and weekly limits) are only provided by Google for AI Pro subscribers. This account can still proxy Gemini models under Google's standard free tier.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px] font-mono">
+            <div class="p-2.5 rounded-lg bg-[#0d0e11] border border-zinc-800/70 flex items-center gap-2 text-zinc-300">
+              <Check class="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <span>Gemini Flash & Pro (Free)</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-[#0d0e11] border border-zinc-800/70 flex items-center gap-2 text-zinc-500">
+              <Lock class="h-3.5 w-3.5 text-amber-500/80 shrink-0" />
+              <span>Claude & GPT (Requires Pro)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quota Fetch Genuine Error -->
       <div
-        v-else-if="account.quotaError"
+        v-else-if="isGenuineError"
         class="p-4 m-5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 flex items-start gap-2.5 text-xs"
       >
         <AlertTriangle class="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
@@ -371,7 +466,7 @@ const isPrimary = computed(() => props.index === 0)
         class="p-5 text-center text-xs text-zinc-500 font-mono flex items-center justify-center gap-2"
       >
         <Shield class="h-4 w-4 text-zinc-600" />
-        <span>No specific rate limits reported by Google</span>
+        <span>Standard rate limits managed by Google CloudCode</span>
       </div>
     </div>
   </Card>

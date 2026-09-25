@@ -221,7 +221,12 @@ func (p *AccountPool) refreshQuotas(ctx context.Context) {
 			defer p.mu.Unlock()
 			a.quotaAt = p.now()
 			if err != nil {
-				a.quotaErr = err.Error()
+				errMsg := err.Error()
+				if strings.Contains(errMsg, "403") || strings.Contains(strings.ToLower(errMsg), "permission") || strings.Contains(strings.ToLower(errMsg), "subscription") {
+					a.quotaErr = "No Google AI Pro subscription on this account"
+				} else {
+					a.quotaErr = errMsg
+				}
 				logger.Get().Warn().Err(err).Str("account", a.id).Msg("Failed to read account quota")
 				return
 			}
