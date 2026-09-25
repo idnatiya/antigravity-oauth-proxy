@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Card } from '@/components/ui/card'
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import type { ModelStat } from '@/types'
 
 const props = defineProps<{
@@ -19,7 +30,7 @@ function formatTokens(count: number): string {
 </script>
 
 <template>
-  <div class="p-6 rounded-xl bg-[#202227] border border-[#2c2e36] flex flex-col gap-4">
+  <Card class="p-6 bg-[#202227] border-[#2c2e36] flex flex-col gap-4">
     <div class="flex items-center justify-between">
       <div>
         <h3 class="text-sm font-semibold text-white tracking-tight">Top Active Models</h3>
@@ -31,45 +42,43 @@ function formatTokens(count: number): string {
       No model usage logged yet.
     </div>
 
-    <div v-else class="overflow-x-auto">
-      <table class="w-full text-left text-xs">
-        <thead class="text-zinc-500 border-b border-[#2c2e36] uppercase font-mono tracking-wider">
-          <tr>
-            <th class="pb-3 font-medium">Model</th>
-            <th class="pb-3 font-medium text-right">Requests</th>
-            <th class="pb-3 font-medium text-right">Tokens</th>
-            <th class="pb-3 font-medium w-36 text-right">Share</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-[#2c2e36]">
-          <tr v-for="m in models" :key="m.model" class="hover:bg-[#252830] transition-colors">
-            <td class="py-3 font-mono font-medium text-zinc-200">
-              <span class="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-blue-400">
+    <div v-else>
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>Model</TableHead>
+            <TableHead class="text-right">Requests</TableHead>
+            <TableHead class="text-right">Tokens</TableHead>
+            <TableHead class="w-36 text-right">Share</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="m in models" :key="m.model">
+            <TableCell class="font-medium text-zinc-200">
+              <Badge variant="outline" class="font-mono bg-blue-500/10 text-blue-400 border-blue-500/20">
                 {{ m.model }}
-              </span>
-            </td>
-            <td class="py-3 text-right font-mono text-zinc-300">
+              </Badge>
+            </TableCell>
+            <TableCell class="text-right text-zinc-300">
               {{ m.request_count.toLocaleString() }}
-            </td>
-            <td class="py-3 text-right font-mono text-zinc-300">
+            </TableCell>
+            <TableCell class="text-right text-zinc-300">
               {{ formatTokens(m.total_tokens) }}
-            </td>
-            <td class="py-3 text-right">
-              <div class="flex items-center justify-end gap-2">
-                <div class="w-20 bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    class="bg-blue-500 h-full rounded-full"
-                    :style="{ width: `${totalReqs > 0 ? (m.request_count / totalReqs) * 100 : 0}%` }"
-                  ></div>
-                </div>
+            </TableCell>
+            <TableCell class="text-right">
+              <div class="flex items-center justify-end gap-2.5">
+                <Progress
+                  :model-value="totalReqs > 0 ? (m.request_count / totalReqs) * 100 : 0"
+                  class="w-20 h-1.5 bg-zinc-800"
+                />
                 <span class="font-mono text-[10px] text-zinc-400 w-8 text-right">
                   {{ totalReqs > 0 ? Math.round((m.request_count / totalReqs) * 100) : 0 }}%
                 </span>
               </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     </div>
-  </div>
+  </Card>
 </template>

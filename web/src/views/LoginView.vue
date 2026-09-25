@@ -3,6 +3,11 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Sparkles, Lock, User, AlertCircle, ArrowRight } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 const router = useRouter()
 const route = useRoute()
@@ -40,15 +45,15 @@ async function handleLogin() {
 
 <template>
   <div class="min-h-screen w-screen flex items-center justify-center bg-[#101114] p-4 select-none">
-    <div class="w-full max-w-md bg-[#1a1c22] border border-[#2c2e36] rounded-2xl shadow-2xl p-8 space-y-6">
+    <Card class="w-full max-w-md bg-[#1a1c22] border-[#2c2e36] shadow-2xl p-6 sm:p-8 space-y-6">
       <!-- Brand Header -->
-      <div class="text-center space-y-2">
-        <div class="inline-flex h-12 w-12 rounded-xl bg-blue-600/20 border border-blue-500/30 items-center justify-center text-blue-400 mb-2">
+      <CardHeader class="p-0 text-center space-y-2">
+        <div class="inline-flex h-12 w-12 rounded-xl bg-blue-600/20 border border-blue-500/30 items-center justify-center text-blue-400 mx-auto mb-1">
           <Sparkles class="h-6 w-6" />
         </div>
-        <h2 class="text-xl font-bold tracking-tight text-white">Antigravity Proxy</h2>
-        <p class="text-xs text-zinc-400">Usage Telemetry & Control Plane</p>
-      </div>
+        <CardTitle class="text-xl font-bold tracking-tight text-white">Antigravity Proxy</CardTitle>
+        <CardDescription class="text-xs text-zinc-400">Usage Telemetry & Control Plane</CardDescription>
+      </CardHeader>
 
       <!-- Error Alert -->
       <div
@@ -60,54 +65,61 @@ async function handleLogin() {
       </div>
 
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1.5">Username</label>
-          <div class="relative">
-            <User class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-            <input
-              v-model="username"
-              type="text"
-              required
-              autocomplete="username"
-              placeholder="admin"
-              class="w-full bg-[#141518] border border-[#2c2e36] focus:border-blue-500 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
-            />
+      <CardContent class="p-0">
+        <form @submit.prevent="handleLogin" class="space-y-4">
+          <div class="space-y-1.5">
+            <Label for="login-username" class="text-xs text-zinc-400">Username</Label>
+            <div class="relative">
+              <User class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              <Input
+                id="login-username"
+                v-model="username"
+                type="text"
+                required
+                autocomplete="username"
+                placeholder="admin"
+                class="bg-[#141518] border-[#2c2e36] pl-9 text-sm h-10 text-zinc-100"
+              />
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1.5">Password</label>
-          <div class="relative">
-            <Lock class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-            <input
-              v-model="password"
-              type="password"
-              required
-              autocomplete="current-password"
-              placeholder="••••••••"
-              class="w-full bg-[#141518] border border-[#2c2e36] focus:border-blue-500 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
-            />
+          <div class="space-y-1.5">
+            <Label for="login-password" class="text-xs text-zinc-400">Password</Label>
+            <div class="relative">
+              <Lock class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              <Input
+                id="login-password"
+                v-model="password"
+                type="password"
+                required
+                autocomplete="current-password"
+                placeholder="••••••••"
+                class="bg-[#141518] border-[#2c2e36] pl-9 text-sm h-10 text-zinc-100"
+              />
+            </div>
           </div>
-        </div>
 
-        <button
-          type="submit"
-          :disabled="isSubmitting"
-          class="w-full mt-2 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-lg shadow-blue-600/20"
-        >
-          <span v-if="isSubmitting">Signing in...</span>
-          <template v-else>
-            <span>Sign In</span>
-            <ArrowRight class="h-4 w-4" />
-          </template>
-        </button>
-      </form>
+          <Button
+            type="submit"
+            size="lg"
+            :disabled="isSubmitting"
+            class="w-full mt-2"
+          >
+            <span v-if="isSubmitting">Signing in...</span>
+            <template v-else>
+              <span>Sign In</span>
+              <ArrowRight class="h-4 w-4 ml-1" />
+            </template>
+          </Button>
+        </form>
+      </CardContent>
+
+      <Separator class="bg-[#24262e]" />
 
       <!-- Default Credentials Hint -->
-      <div class="pt-4 border-t border-[#24262e] text-center text-[11px] text-zinc-500">
-        Default credentials: <code class="text-zinc-300 font-mono bg-zinc-800/80 px-1 py-0.5 rounded">admin</code> / <code class="text-zinc-300 font-mono bg-zinc-800/80 px-1 py-0.5 rounded">admin</code>
-      </div>
-    </div>
+      <CardFooter class="p-0 justify-center text-[11px] text-zinc-500">
+        Default credentials: <code class="text-zinc-300 font-mono bg-zinc-800/80 px-1 py-0.5 rounded mx-1">admin</code> / <code class="text-zinc-300 font-mono bg-zinc-800/80 px-1 py-0.5 rounded mx-1">admin</code>
+      </CardFooter>
+    </Card>
   </div>
 </template>

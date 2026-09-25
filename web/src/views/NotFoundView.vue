@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { AlertCircle, ArrowLeft } from '@lucide/vue'
+import { Button } from '@/components/ui/button'
+
+const router = useRouter()
 </script>
 
 <template>
@@ -13,13 +16,13 @@ import { AlertCircle, ArrowLeft } from '@lucide/vue'
       The requested dashboard view or route does not exist.
     </p>
     <div class="pt-2">
-      <RouterLink
-        to="/overview"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors"
+      <Button
+        @click="router.push('/overview')"
+        class="gap-2"
       >
         <ArrowLeft class="h-3.5 w-3.5" />
         <span>Return to Overview</span>
-      </RouterLink>
+      </Button>
     </div>
   </div>
 </template>

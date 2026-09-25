@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { X, AlertCircle, CheckCircle2, Clock, Cpu, HardDrive } from '@lucide/vue'
+import { AlertCircle, CheckCircle2, Clock, Cpu, HardDrive } from '@lucide/vue'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import type { RequestRecord } from '@/types'
 
 defineProps<{
@@ -13,38 +24,30 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div
-    v-if="open && record"
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-    @click.self="emit('close')"
-  >
-    <div class="w-full max-w-2xl bg-[#1a1c22] border border-[#2c2e36] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+  <Dialog :open="open && !!record" @update:open="val => { if (!val) emit('close') }">
+    <DialogContent class="max-w-2xl bg-[#1a1c22] border-[#2c2e36] p-0 overflow-hidden gap-0">
       <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-[#2c2e36] flex items-center justify-between bg-[#141518]">
+      <DialogHeader class="px-6 py-4 border-b border-[#2c2e36] bg-[#141518]">
         <div class="flex items-center gap-3">
           <div
-            class="h-8 w-8 rounded-lg flex items-center justify-center"
+            v-if="record"
+            class="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
             :class="record.status_code < 400 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'"
           >
             <CheckCircle2 v-if="record.status_code < 400" class="h-4 w-4" />
             <AlertCircle v-else class="h-4 w-4" />
           </div>
-          <div>
-            <h3 class="text-sm font-semibold text-white">Request Trace Details</h3>
-            <p class="text-xs font-mono text-zinc-500 truncate max-w-md">{{ record.id }}</p>
+          <div class="min-w-0">
+            <DialogTitle class="text-sm font-semibold text-white">Request Trace Details</DialogTitle>
+            <DialogDescription class="text-xs font-mono text-zinc-500 truncate max-w-md mt-0.5">
+              {{ record?.id }}
+            </DialogDescription>
           </div>
         </div>
-
-        <button
-          @click="emit('close')"
-          class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
-        >
-          <X class="h-4 w-4" />
-        </button>
-      </div>
+      </DialogHeader>
 
       <!-- Modal Body -->
-      <div class="p-6 overflow-y-auto space-y-6 text-xs font-mono">
+      <div v-if="record" class="p-6 overflow-y-auto max-h-[60vh] space-y-5 text-xs font-mono">
         <!-- Error Banner if failed -->
         <div
           v-if="record.status_code >= 400 || record.error_message"
@@ -62,65 +65,75 @@ const emit = defineEmits<{
         <!-- Metrics Grid -->
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div class="p-3 rounded-lg bg-[#202227] border border-[#2c2e36]">
-            <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1">
+            <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1 font-sans font-medium">
               <Clock class="h-3 w-3" /> Latency
             </span>
-            <div class="mt-1 text-sm font-semibold text-white">{{ record.latency_ms }} ms</div>
+            <div class="mt-1 text-sm font-semibold text-white font-mono">{{ record.latency_ms }} ms</div>
           </div>
 
           <div class="p-3 rounded-lg bg-[#202227] border border-[#2c2e36]">
-            <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1">
+            <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1 font-sans font-medium">
               <Cpu class="h-3 w-3" /> Model
             </span>
-            <div class="mt-1 text-sm font-semibold text-blue-400 truncate">{{ record.model }}</div>
+            <div class="mt-1 text-sm font-semibold text-blue-400 truncate font-mono">{{ record.model }}</div>
           </div>
 
           <div class="p-3 rounded-lg bg-[#202227] border border-[#2c2e36]">
-            <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1">
+            <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1 font-sans font-medium">
               <HardDrive class="h-3 w-3" /> Total Tokens
             </span>
-            <div class="mt-1 text-sm font-semibold text-emerald-400">{{ record.total_tokens.toLocaleString() }}</div>
+            <div class="mt-1 text-sm font-semibold text-emerald-400 font-mono">{{ record.total_tokens.toLocaleString() }}</div>
           </div>
         </div>
 
         <!-- Detailed Breakdown -->
         <div class="p-4 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-2.5">
-          <div class="flex justify-between py-1 border-b border-[#2c2e36]">
-            <span class="text-zinc-500">Timestamp</span>
+          <div class="flex justify-between py-1">
+            <span class="text-zinc-500 font-sans">Timestamp</span>
             <span class="text-zinc-200">{{ record.timestamp }}</span>
           </div>
-          <div class="flex justify-between py-1 border-b border-[#2c2e36]">
-            <span class="text-zinc-500">HTTP Endpoint</span>
+          <Separator />
+          <div class="flex justify-between py-1">
+            <span class="text-zinc-500 font-sans">HTTP Endpoint</span>
             <span class="text-zinc-200">{{ record.endpoint }}</span>
           </div>
-          <div class="flex justify-between py-1 border-b border-[#2c2e36]">
-            <span class="text-zinc-500">Streaming (SSE)</span>
-            <span class="text-zinc-200">{{ record.is_stream ? 'Yes (text/event-stream)' : 'No (Standard JSON)' }}</span>
+          <Separator />
+          <div class="flex justify-between py-1">
+            <span class="text-zinc-500 font-sans">Streaming (SSE)</span>
+            <Badge variant="outline" class="font-mono text-[10px]">
+              {{ record.is_stream ? 'Yes (text/event-stream)' : 'No (Standard JSON)' }}
+            </Badge>
           </div>
-          <div class="flex justify-between py-1 border-b border-[#2c2e36]">
-            <span class="text-zinc-500">Prompt Tokens</span>
+          <Separator />
+          <div class="flex justify-between py-1">
+            <span class="text-zinc-500 font-sans">Prompt Tokens</span>
             <span class="text-zinc-200">{{ record.prompt_tokens.toLocaleString() }}</span>
           </div>
-          <div class="flex justify-between py-1 border-b border-[#2c2e36]">
-            <span class="text-zinc-500">Completion Tokens</span>
+          <Separator />
+          <div class="flex justify-between py-1">
+            <span class="text-zinc-500 font-sans">Completion Tokens</span>
             <span class="text-zinc-200">{{ record.completion_tokens.toLocaleString() }}</span>
           </div>
-          <div v-if="record.client_ip" class="flex justify-between py-1">
-            <span class="text-zinc-500">Client IP</span>
-            <span class="text-zinc-200">{{ record.client_ip }}</span>
-          </div>
+          <template v-if="record.client_ip">
+            <Separator />
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-500 font-sans">Client IP</span>
+              <span class="text-zinc-200">{{ record.client_ip }}</span>
+            </div>
+          </template>
         </div>
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-3 border-t border-[#2c2e36] bg-[#141518] flex justify-end">
-        <button
+      <DialogFooter class="px-6 py-3 border-t border-[#2c2e36] bg-[#141518]">
+        <Button
+          variant="secondary"
+          size="sm"
           @click="emit('close')"
-          class="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
         >
           Close
-        </button>
-      </div>
-    </div>
-  </div>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>

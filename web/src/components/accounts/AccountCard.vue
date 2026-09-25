@@ -13,6 +13,10 @@ import {
   Zap,
   RefreshCw,
 } from '@lucide/vue'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import type { AccountItem, QuotaBucket, AccountTestResult } from '@/types'
 
 const props = defineProps<{
@@ -109,8 +113,8 @@ const isPrimary = computed(() => props.index === 0)
 </script>
 
 <template>
-  <div
-    class="rounded-2xl bg-[#202227] border transition-all duration-200 overflow-hidden flex flex-col justify-between"
+  <Card
+    class="overflow-hidden flex flex-col justify-between"
     :class="[
       isPrimary && !isCooling
         ? 'border-blue-500/40 shadow-lg shadow-blue-500/5'
@@ -175,42 +179,49 @@ const isPrimary = computed(() => props.index === 0)
         <div class="shrink-0 flex flex-col items-end gap-1.5">
           <div class="flex items-center gap-2">
             <!-- Pool Priority Badge -->
-            <span
+            <Badge
               v-if="isPrimary"
-              class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 tracking-wide uppercase"
+              variant="default"
+              class="uppercase tracking-wide font-semibold text-[10px]"
             >
               <Sparkles class="h-2.5 w-2.5" />
               Primary #1
-            </span>
-            <span
+            </Badge>
+            <Badge
               v-else
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-zinc-400 bg-zinc-800/80 border border-zinc-700/60"
+              variant="secondary"
+              class="font-mono text-[10px]"
             >
               Fallback #{{ index + 1 }}
-            </span>
+            </Badge>
 
             <!-- Test Connection button -->
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               :disabled="disabled || isTesting"
               @click="emit('test', account)"
               :title="isTesting ? 'Testing CloudCode connectivity...' : 'Test connection to CloudCode API'"
-              class="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 disabled:opacity-50 transition-colors cursor-pointer"
+              class="h-7 w-7 text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10"
             >
               <RefreshCw v-if="isTesting" class="h-3.5 w-3.5 animate-spin text-blue-400" />
               <Zap v-else class="h-3.5 w-3.5" />
-            </button>
+            </Button>
 
             <!-- Logout button -->
-            <button
+            <Button
               v-if="account.removable"
+              type="button"
+              variant="ghost"
+              size="icon"
               :disabled="disabled || isTesting"
               @click="emit('remove', account)"
               title="Disconnect account"
-              class="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors cursor-pointer"
+              class="h-7 w-7 text-zinc-500 hover:text-red-400 hover:bg-red-500/10"
             >
               <LogOut class="h-3.5 w-3.5" />
-            </button>
+            </Button>
             <span
               v-else
               title="Configured via environment variable"
@@ -314,14 +325,11 @@ const isPrimary = computed(() => props.index === 0)
               </div>
 
               <!-- Progress bar -->
-              <div class="h-2 w-full rounded-full bg-[#202227] overflow-hidden p-0.5">
-                <div
-                  v-if="percent(bucket) !== null"
-                  class="h-full rounded-full transition-all duration-500"
-                  :class="barColor(percent(bucket)!)"
-                  :style="{ width: `${Math.min(100, Math.max(0, percent(bucket)!))}%` }"
-                />
-              </div>
+              <Progress
+                :model-value="percent(bucket) ?? 0"
+                class="h-2 bg-[#202227]"
+                :indicator-class="barColor(percent(bucket) ?? 0)"
+              />
 
               <!-- Reset countdown -->
               <div class="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
@@ -366,5 +374,5 @@ const isPrimary = computed(() => props.index === 0)
         <span>No specific rate limits reported by Google</span>
       </div>
     </div>
-  </div>
+  </Card>
 </template>

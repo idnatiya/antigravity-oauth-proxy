@@ -3,6 +3,12 @@ import { ref } from 'vue'
 import { ShieldCheck, Key, Lock, CheckCircle2, AlertCircle } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsageStore } from '@/stores/usageStore'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 const authStore = useAuthStore()
 const usageStore = useUsageStore()
@@ -67,7 +73,7 @@ async function handleChangePassword() {
     <!-- Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <!-- Admin Account Card -->
-      <div class="p-5 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-4">
+      <Card class="p-5 bg-[#202227] border-[#2c2e36] space-y-4">
         <div class="flex items-center gap-3">
           <div class="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
             <ShieldCheck class="h-5 w-5" />
@@ -78,20 +84,21 @@ async function handleChangePassword() {
           </div>
         </div>
 
-        <div class="space-y-2 pt-2 border-t border-[#2a2d34] text-xs">
+        <div class="space-y-2.5 pt-1 text-xs">
+          <Separator class="bg-[#2a2d34]" />
           <div class="flex justify-between py-1">
             <span class="text-zinc-500">Username</span>
             <span class="text-zinc-200 font-mono font-medium">{{ authStore.user?.username || 'admin' }}</span>
           </div>
-          <div class="flex justify-between py-1">
+          <div class="flex justify-between py-1 items-center">
             <span class="text-zinc-500">Role</span>
-            <span class="text-emerald-400 font-mono font-medium">Superadmin</span>
+            <Badge variant="success" class="font-mono text-[10px]">Superadmin</Badge>
           </div>
         </div>
-      </div>
+      </Card>
 
       <!-- CloudCode Token Card -->
-      <div class="p-5 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-4">
+      <Card class="p-5 bg-[#202227] border-[#2c2e36] space-y-4">
         <div class="flex items-center gap-3">
           <div class="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
             <Key class="h-5 w-5" />
@@ -102,7 +109,8 @@ async function handleChangePassword() {
           </div>
         </div>
 
-        <div class="space-y-2 pt-2 border-t border-[#2a2d34] text-xs">
+        <div class="space-y-2.5 pt-1 text-xs">
+          <Separator class="bg-[#2a2d34]" />
           <div class="flex justify-between py-1">
             <span class="text-zinc-500">Project ID</span>
             <span class="text-blue-400 font-mono">{{ usageStore.account?.project_id || '—' }}</span>
@@ -112,11 +120,11 @@ async function handleChangePassword() {
             <span class="text-zinc-200 font-mono">{{ usageStore.account?.provider || 'FileProvider' }}</span>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
 
     <!-- Change Password Form Card -->
-    <div class="p-6 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-5">
+    <Card class="p-6 bg-[#202227] border-[#2c2e36] space-y-5">
       <div class="flex items-center gap-3">
         <div class="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
           <Lock class="h-4 w-4" />
@@ -145,48 +153,50 @@ async function handleChangePassword() {
       </div>
 
       <form @submit.prevent="handleChangePassword" class="space-y-4 max-w-md text-xs">
-        <div>
-          <label class="block font-medium text-zinc-400 mb-1">Current Password</label>
-          <input
+        <div class="space-y-1.5">
+          <Label for="current-password">Current Password</Label>
+          <Input
+            id="current-password"
             v-model="currentPassword"
             type="password"
             required
-            class="w-full bg-[#18191d] border border-[#2c2e36] focus:border-blue-500 rounded-lg px-3 py-2 text-zinc-200 placeholder:text-zinc-600 focus:outline-none transition-colors"
+            class="bg-[#18191d] border-[#2c2e36] h-9"
           />
         </div>
 
-        <div>
-          <label class="block font-medium text-zinc-400 mb-1">New Password</label>
-          <input
+        <div class="space-y-1.5">
+          <Label for="new-password">New Password</Label>
+          <Input
+            id="new-password"
             v-model="newPassword"
             type="password"
             required
             minlength="4"
             placeholder="At least 4 characters"
-            class="w-full bg-[#18191d] border border-[#2c2e36] focus:border-blue-500 rounded-lg px-3 py-2 text-zinc-200 placeholder:text-zinc-600 focus:outline-none transition-colors"
+            class="bg-[#18191d] border-[#2c2e36] h-9"
           />
         </div>
 
-        <div>
-          <label class="block font-medium text-zinc-400 mb-1">Confirm New Password</label>
-          <input
+        <div class="space-y-1.5">
+          <Label for="confirm-password">Confirm New Password</Label>
+          <Input
+            id="confirm-password"
             v-model="confirmPassword"
             type="password"
             required
             minlength="4"
             placeholder="Repeat new password"
-            class="w-full bg-[#18191d] border border-[#2c2e36] focus:border-blue-500 rounded-lg px-3 py-2 text-zinc-200 placeholder:text-zinc-600 focus:outline-none transition-colors"
+            class="bg-[#18191d] border-[#2c2e36] h-9"
           />
         </div>
 
-        <button
+        <Button
           type="submit"
           :disabled="isSaving"
-          class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors cursor-pointer"
         >
           {{ isSaving ? 'Saving...' : 'Update Password' }}
-        </button>
+        </Button>
       </form>
-    </div>
+    </Card>
   </div>
 </template>

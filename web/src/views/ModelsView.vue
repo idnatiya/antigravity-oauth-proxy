@@ -2,6 +2,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { Search } from '@lucide/vue'
 import { useUsageStore } from '@/stores/usageStore'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 const usageStore = useUsageStore()
 const search = ref('')
@@ -19,13 +23,13 @@ function getFamily(id: string): string {
   return 'General'
 }
 
-function getTierBadge(id: string): { label: string; color: string } {
-  if (id.includes('high')) return { label: 'High Reasoning', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' }
-  if (id.includes('medium')) return { label: 'Medium Reasoning', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' }
-  if (id.includes('low') || id.includes('flash-lite')) return { label: 'Low Reasoning (Fast)', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' }
-  if (id.includes('thinking')) return { label: 'Extended Thinking', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }
-  if (id.includes('agent')) return { label: 'Autonomous Agent', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' }
-  return { label: 'Standard', color: 'bg-zinc-800 text-zinc-300 border-zinc-700' }
+function getTierBadge(id: string): { label: string; variant: 'default' | 'secondary' | 'warning' | 'success' | 'outline' } {
+  if (id.includes('high')) return { label: 'High Reasoning', variant: 'default' }
+  if (id.includes('medium')) return { label: 'Medium Reasoning', variant: 'default' }
+  if (id.includes('low') || id.includes('flash-lite')) return { label: 'Low Reasoning (Fast)', variant: 'success' }
+  if (id.includes('thinking')) return { label: 'Extended Thinking', variant: 'warning' }
+  if (id.includes('agent')) return { label: 'Autonomous Agent', variant: 'default' }
+  return { label: 'Standard', variant: 'secondary' }
 }
 
 const filteredModels = computed(() => {
@@ -47,12 +51,12 @@ const filteredModels = computed(() => {
 
       <!-- Search Input -->
       <div class="relative w-full sm:w-72">
-        <Search class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-        <input
+        <Search class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+        <Input
           v-model="search"
           type="text"
           placeholder="Search models..."
-          class="w-full bg-[#202227] border border-[#2c2e36] focus:border-blue-500 rounded-lg pl-9 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none transition-colors"
+          class="bg-[#202227] border-[#2c2e36] pl-9 text-xs h-9"
         />
       </div>
     </div>
@@ -67,22 +71,19 @@ const filteredModels = computed(() => {
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div
+      <Card
         v-for="m in filteredModels"
         :key="m.id"
-        class="p-5 rounded-xl bg-[#202227] border border-[#2c2e36] hover:border-[#383a45] transition-all flex flex-col justify-between space-y-4"
+        class="p-5 bg-[#202227] border-[#2c2e36] hover:border-[#383a45] transition-all flex flex-col justify-between space-y-4"
       >
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-[10px] font-mono uppercase text-zinc-500 tracking-wider">
               {{ getFamily(m.id) }}
             </span>
-            <span
-              class="px-2 py-0.5 rounded-full border text-[10px] font-medium font-mono"
-              :class="getTierBadge(m.id).color"
-            >
+            <Badge :variant="getTierBadge(m.id).variant" class="font-mono text-[10px]">
               {{ getTierBadge(m.id).label }}
-            </span>
+            </Badge>
           </div>
 
           <h3 class="font-mono text-sm font-semibold text-white tracking-tight break-all">
@@ -90,11 +91,14 @@ const filteredModels = computed(() => {
           </h3>
         </div>
 
-        <div class="pt-3 border-t border-[#2a2d34] flex items-center justify-between text-xs text-zinc-400">
-          <span class="text-zinc-500">Provider: <span class="text-zinc-300 font-mono">{{ m.owned_by }}</span></span>
-          <span class="text-[11px] font-mono text-blue-400">OpenAI Compatible</span>
+        <div class="space-y-3">
+          <Separator class="bg-[#2a2d34]" />
+          <div class="flex items-center justify-between text-xs text-zinc-400">
+            <span class="text-zinc-500">Provider: <span class="text-zinc-300 font-mono">{{ m.owned_by }}</span></span>
+            <span class="text-[11px] font-mono text-blue-400">OpenAI Compatible</span>
+          </div>
         </div>
-      </div>
+      </Card>
     </div>
   </div>
 </template>

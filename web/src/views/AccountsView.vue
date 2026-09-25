@@ -19,6 +19,8 @@ import { useUsageStore } from '@/stores/usageStore'
 import StatCard from '@/components/overview/StatCard.vue'
 import AccountCard from '@/components/accounts/AccountCard.vue'
 import DeleteAccountModal from '@/components/accounts/DeleteAccountModal.vue'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import type { AccountItem, AccountTestResult } from '@/types'
 
 const usageStore = useUsageStore()
@@ -217,12 +219,13 @@ onMounted(() => run(load))
       <div>
         <div class="flex items-center gap-2.5">
           <h2 class="text-base font-semibold text-white tracking-tight">Google Accounts</h2>
-          <span
+          <Badge
             v-if="loaded"
-            class="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-[#202227] border border-[#2c2e36] text-zinc-400"
+            variant="secondary"
+            class="font-mono text-zinc-400"
           >
             {{ accounts.length }} total
-          </span>
+          </Badge>
         </div>
         <p class="text-xs text-zinc-500 mt-0.5">
           Requests use the first ready account; accounts exceeding quota fail over seamlessly until reset.
@@ -230,37 +233,40 @@ onMounted(() => run(load))
       </div>
 
       <div class="shrink-0 flex items-center gap-2.5">
-        <button
+        <Button
           v-if="accounts.length > 0"
+          variant="outline"
+          size="sm"
           :disabled="busy || testingAll"
           @click="testAllAccounts"
           title="Test connectivity for all accounts"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#2c2e36] bg-[#202227] text-zinc-300 hover:text-white hover:bg-[#282a32] disabled:opacity-50 transition-colors text-xs font-medium cursor-pointer shadow-xs"
         >
           <RefreshCw v-if="testingAll" class="h-3.5 w-3.5 animate-spin text-amber-400" />
           <Zap v-else class="h-3.5 w-3.5 text-amber-400" />
           <span>{{ testingAll ? 'Testing...' : 'Test All' }}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           :disabled="busy || testingAll"
           @click="run(load)"
           title="Refresh account pool & quotas"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#2c2e36] bg-[#202227] text-zinc-300 hover:text-white hover:bg-[#282a32] disabled:opacity-50 transition-colors text-xs font-medium cursor-pointer shadow-xs"
         >
           <RefreshCw class="h-3.5 w-3.5" :class="busy ? 'animate-spin' : ''" />
           <span>Refresh</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           v-if="webLoginEnabled"
+          variant="default"
+          size="sm"
           :disabled="busy || testingAll"
           @click="startLogin"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium transition-all shadow-sm shadow-blue-500/10 cursor-pointer"
         >
           <Plus class="h-3.5 w-3.5" />
           <span>Add Google Account</span>
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -404,22 +410,22 @@ onMounted(() => run(load))
           />
         </div>
         <div class="flex items-center gap-2">
-          <button
+          <Button
             type="submit"
             :disabled="busy || !redirectInput.trim()"
-            class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium transition-colors cursor-pointer shadow-sm"
+            class="flex-1 sm:flex-initial"
           >
             <RefreshCw v-if="busy" class="h-3.5 w-3.5 animate-spin" />
             <ArrowRight v-else class="h-3.5 w-3.5" />
             <span>{{ busy ? 'Verifying...' : 'Finish Authorization' }}</span>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="secondary"
             @click="cancelLogin"
-            class="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

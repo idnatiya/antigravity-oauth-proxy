@@ -17,6 +17,10 @@ import {
   RefreshCw,
 } from '@lucide/vue'
 import { useUsageStore } from '@/stores/usageStore'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 
 const usageStore = useUsageStore()
 
@@ -240,9 +244,9 @@ onMounted(() => {
       <div>
         <div class="flex items-center gap-2.5">
           <h2 class="text-base font-semibold text-white tracking-tight">API Playground & Functional Tester</h2>
-          <span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          <Badge variant="outline" class="font-mono text-blue-400 bg-blue-500/10 border-blue-500/20 text-[11px]">
             OpenAI Compatible
-          </span>
+          </Badge>
         </div>
         <p class="text-xs text-zinc-500 mt-0.5">
           Verify end-to-end proxy completions, test real-time SSE streaming, and benchmark models.
@@ -250,14 +254,14 @@ onMounted(() => {
       </div>
 
       <div class="flex items-center gap-2">
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           @click="showCurlModal = !showCurlModal"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#2c2e36] bg-[#202227] text-zinc-300 hover:text-white hover:bg-[#282a32] text-xs font-medium transition-colors cursor-pointer shadow-xs"
         >
           <Terminal class="h-3.5 w-3.5 text-zinc-400" />
           <span>{{ showCurlModal ? 'Hide cURL' : 'cURL Command' }}</span>
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -268,14 +272,16 @@ onMounted(() => {
     >
       <div class="flex items-center justify-between text-zinc-400">
         <span class="text-[11px] uppercase tracking-wider font-sans font-medium text-zinc-500">Terminal Command</span>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           @click="copyCurl"
-          class="flex items-center gap-1 px-2.5 py-1 rounded bg-[#202227] border border-[#2c2e36] text-zinc-300 hover:text-white transition-colors cursor-pointer text-[11px] font-sans"
+          class="h-7 text-[11px]"
         >
           <Check v-if="copiedCurl" class="h-3.5 w-3.5 text-emerald-400" />
           <Copy v-else class="h-3.5 w-3.5" />
           <span>{{ copiedCurl ? 'Copied' : 'Copy cURL' }}</span>
-        </button>
+        </Button>
       </div>
       <pre class="p-3 rounded-lg bg-[#101114] border border-[#24262e] text-zinc-300 text-[11px] overflow-x-auto selection:bg-blue-600/40"><code>{{ curlCommand }}</code></pre>
     </div>
@@ -285,7 +291,7 @@ onMounted(() => {
       <!-- Left Column: Settings & Input (5 cols) -->
       <div class="lg:col-span-5 space-y-4">
         <!-- Configuration Card -->
-        <div class="p-4 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-3.5 text-xs">
+        <Card class="p-4 bg-[#202227] border-[#2c2e36] space-y-3.5 text-xs">
           <!-- Model Selection -->
           <div class="space-y-1.5">
             <label class="block font-medium text-zinc-400">Select Model</label>
@@ -309,17 +315,11 @@ onMounted(() => {
               <div class="font-medium text-white">Stream Output (SSE)</div>
               <div class="text-[11px] text-zinc-500">Stream response tokens incrementally</div>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="streamMode"
-                :disabled="isRunning"
-                class="sr-only peer"
-              />
-              <div
-                class="w-9 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"
-              />
-            </label>
+            <Switch
+              :checked="streamMode"
+              @update:checked="streamMode = $event"
+              :disabled="isRunning"
+            />
           </div>
 
           <!-- Collapsible System Prompt -->
@@ -342,7 +342,7 @@ onMounted(() => {
               />
             </div>
           </div>
-        </div>
+        </Card>
 
         <!-- Quick Presets -->
         <div class="space-y-1.5">
@@ -363,18 +363,20 @@ onMounted(() => {
         </div>
 
         <!-- Prompt Textarea Card -->
-        <div class="p-4 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-3">
+        <Card class="p-4 bg-[#202227] border-[#2c2e36] space-y-3">
           <div class="flex items-center justify-between">
             <label class="text-xs font-medium text-zinc-400">User Prompt</label>
-            <button
+            <Button
               v-if="promptText"
+              variant="ghost"
+              size="sm"
               @click="clearAll"
               :disabled="isRunning"
-              class="text-[11px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 cursor-pointer"
+              class="h-6 px-2 text-[11px] text-zinc-500 hover:text-zinc-300 gap-1"
             >
               <Trash2 class="h-3 w-3" />
               <span>Clear</span>
-            </button>
+            </Button>
           </div>
 
           <textarea
@@ -392,56 +394,60 @@ onMounted(() => {
             </span>
 
             <div class="flex items-center gap-2">
-              <button
+              <Button
                 v-if="isRunning"
-                type="button"
+                variant="destructive"
+                size="sm"
                 @click="stopTest"
-                class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition-colors cursor-pointer"
+                class="gap-1.5"
               >
                 <Square class="h-3.5 w-3.5 fill-current" />
                 <span>Stop</span>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 v-else
-                type="button"
+                variant="default"
+                size="sm"
                 :disabled="!promptText.trim()"
                 @click="runTest"
-                class="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium transition-all shadow-sm shadow-blue-500/10 cursor-pointer"
+                class="gap-1.5"
               >
                 <Play class="h-3.5 w-3.5 fill-current" />
                 <span>Run Prompt</span>
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       <!-- Right Column: Live Output & Telemetry (7 cols) -->
       <div class="lg:col-span-7 space-y-4">
         <!-- Output Card -->
-        <div class="rounded-xl bg-[#202227] border border-[#2c2e36] overflow-hidden flex flex-col min-h-[460px]">
+        <Card class="bg-[#202227] border-[#2c2e36] overflow-hidden flex flex-col min-h-[460px]">
           <!-- Card Header & Status Bar -->
           <div class="px-5 py-3 border-b border-[#282a32] flex items-center justify-between bg-[#1b1d22]">
             <div class="flex items-center gap-2.5">
               <span class="text-xs font-semibold text-white">Execution Output</span>
               <!-- Status indicator -->
-              <span
+              <Badge
                 v-if="isRunning"
-                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                variant="outline"
+                class="font-mono text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/20 gap-1.5"
               >
                 <RefreshCw class="h-2.5 w-2.5 animate-spin" />
                 Streaming...
-              </span>
-              <span
+              </Badge>
+              <Badge
                 v-else-if="responseStatus"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium"
-                :class="responseStatus < 400 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'"
+                variant="outline"
+                :class="responseStatus < 400 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"
+                class="font-mono text-[10px] gap-1"
               >
                 <CheckCircle2 v-if="responseStatus < 400" class="h-3 w-3" />
                 <AlertCircle v-else class="h-3 w-3" />
                 {{ responseStatus }} {{ responseStatus < 400 ? 'OK' : 'Error' }}
-              </span>
+              </Badge>
             </div>
 
             <!-- Header Actions -->
@@ -450,16 +456,18 @@ onMounted(() => {
                 <Clock class="h-3 w-3 text-zinc-500" />
                 {{ latencyMs }}ms
               </span>
-              <button
+              <Button
                 v-if="responseText"
+                variant="secondary"
+                size="sm"
                 @click="copyOutput"
-                class="flex items-center gap-1 px-2.5 py-1 rounded bg-[#252830] hover:bg-[#2e313b] text-zinc-300 hover:text-white transition-colors text-[11px] cursor-pointer"
+                class="h-7 text-[11px]"
                 title="Copy response text"
               >
                 <Check v-if="copiedOutput" class="h-3 w-3 text-emerald-400" />
                 <Copy v-else class="h-3 w-3" />
                 <span>{{ copiedOutput ? 'Copied' : 'Copy' }}</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -516,7 +524,7 @@ onMounted(() => {
               <span>Output length: <strong class="text-zinc-200">{{ responseText.length }} chars</strong></span>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   </div>

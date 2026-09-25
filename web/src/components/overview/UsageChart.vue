@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Card } from '@/components/ui/card'
 import type { TimeSeriesPoint } from '@/types'
 
 const props = defineProps<{
@@ -54,7 +55,7 @@ const svgArea = computed(() => {
 </script>
 
 <template>
-  <div class="p-6 rounded-xl bg-[#202227] border border-[#2c2e36] flex flex-col gap-4">
+  <Card class="p-6 bg-[#202227] border-[#2c2e36] flex flex-col gap-4">
     <div class="flex items-center justify-between">
       <div>
         <h3 class="text-sm font-semibold text-white tracking-tight">Request Volume Over Time</h3>
@@ -97,5 +98,5 @@ const svgArea = computed(() => {
         <path :d="svgPath" fill="none" stroke="#3b82f6" stroke-width="2.5" />
       </svg>
     </div>
-  </div>
+  </Card>
 </template>

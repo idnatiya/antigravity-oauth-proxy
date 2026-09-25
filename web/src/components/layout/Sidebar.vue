@@ -4,6 +4,8 @@ import { RouterLink, useRoute } from 'vue-router'
 import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Radio, Sparkles, Users, FlaskConical } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsageStore } from '@/stores/usageStore'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -36,7 +38,9 @@ const accountsText = computed(() => {
       <div>
         <div class="font-semibold text-sm tracking-tight text-white flex items-center gap-1.5">
           Antigravity
-          <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Proxy</span>
+          <Badge variant="outline" class="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border-blue-500/20">
+            Proxy
+          </Badge>
         </div>
         <div class="text-[11px] text-zinc-500 font-mono">Control Plane</div>
       </div>
@@ -73,7 +77,9 @@ const accountsText = computed(() => {
         <RouterLink to="/accounts" class="font-mono text-zinc-300 font-medium hover:text-white">{{ accountsText }}</RouterLink>
       </div>
 
-      <div class="pt-2 border-t border-[#1e2027] flex items-center justify-between text-xs">
+      <Separator class="bg-[#1e2027]" />
+
+      <div class="flex items-center justify-between text-xs">
         <div class="truncate text-zinc-400">
           <span class="text-zinc-500">User: </span>
           <span class="font-medium text-zinc-200">{{ authStore.user?.username || 'admin' }}</span>

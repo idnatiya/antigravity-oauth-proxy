@@ -5,6 +5,7 @@ import { useUsageStore } from '@/stores/usageStore'
 import StatCard from '@/components/overview/StatCard.vue'
 import UsageChart from '@/components/overview/UsageChart.vue'
 import TopModelsTable from '@/components/overview/TopModelsTable.vue'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const usageStore = useUsageStore()
 
@@ -46,22 +47,19 @@ const formattedTokens = computed(() => {
         <p class="text-xs text-zinc-500">Real-time aggregate usage across all LLM client endpoints</p>
       </div>
 
-      <!-- Time Range Selector -->
-      <div class="flex items-center bg-[#202227] border border-[#2c2e36] rounded-lg p-1 text-xs">
-        <button
-          v-for="r in ranges"
-          :key="r.value"
-          @click="selectRange(r.value)"
-          class="px-3 py-1 rounded-md transition-all font-medium cursor-pointer"
-          :class="[
-            usageStore.timeRange === r.value
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-zinc-400 hover:text-zinc-200'
-          ]"
-        >
-          {{ r.label }}
-        </button>
-      </div>
+      <!-- Time Range Selector using shadcn Tabs -->
+      <Tabs :model-value="usageStore.timeRange" @update:model-value="selectRange($event as string)">
+        <TabsList>
+          <TabsTrigger
+            v-for="r in ranges"
+            :key="r.value"
+            :value="r.value"
+            :data-state="usageStore.timeRange === r.value ? 'active' : 'inactive'"
+          >
+            {{ r.label }}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
     </div>
 
     <!-- Stat Cards Grid -->
