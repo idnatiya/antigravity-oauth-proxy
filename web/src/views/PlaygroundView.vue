@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { marked } from 'marked'
 import {
   Play,
   Square,
@@ -9,19 +10,36 @@ import {
   Check,
   Clock,
   Terminal,
-  Cpu,
   Zap,
   CheckCircle2,
   AlertCircle,
   Sparkles,
   Code,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  FileText,
 } from '@lucide/vue'
 import { useUsageStore } from '@/stores/usageStore'
+import ModelSelector from '@/components/playground/ModelSelector.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+
+// Configure marked
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+})
 
 const route = useRoute()
 const usageStore = useUsageStore()
@@ -29,6 +47,7 @@ const usageStore = useUsageStore()
 // State
 const selectedModel = ref('gemini-2.5-flash')
 const streamMode = ref(true)
+const viewMode = ref<'markdown' | 'raw'>('markdown')
 const promptText = ref('')
 const systemPrompt = ref('')
 const showSystemPrompt = ref(false)
@@ -67,7 +86,7 @@ const presets = [
     prompt: 'Reply with "Antigravity Proxy is fully operational!" and state your exact model name.',
   },
   {
-    label: 'Math Calculation',
+    label: 'Math Calc',
     icon: Zap,
     prompt: 'Compute 12345 * 67890. Show the exact calculation and the final number.',
   },
@@ -77,7 +96,7 @@ const presets = [
     prompt: 'Write a TypeScript function to deep clone an object safely, handling Dates and nested arrays.',
   },
   {
-    label: 'Streaming Speed',
+    label: 'Stream Speed',
     icon: Terminal,
     prompt: 'Write a 3-paragraph inspiring story about human exploration of the Alpha Centauri system.',
   },
@@ -86,6 +105,24 @@ const presets = [
 function selectPreset(prompt: string) {
   promptText.value = prompt
 }
+
+const wordCount = computed(() => {
+  return promptText.value.split(/\s+/).filter(Boolean).length
+})
+
+const estimatedTokens = computed(() => {
+  if (!responseText.value) return 0
+  return Math.round(responseText.value.length / 4)
+})
+
+const renderedMarkdown = computed(() => {
+  if (!responseText.value) return ''
+  try {
+    return marked.parse(responseText.value, { async: false }) as string
+  } catch {
+    return responseText.value
+  }
+})
 
 async function runTest() {
   if (!promptText.value.trim() || isRunning.value) return
@@ -189,12 +226,20 @@ function stopTest() {
   }
 }
 
-function clearAll() {
+function clearPrompt() {
   promptText.value = ''
+}
+
+function clearOutput() {
   responseText.value = ''
   errorMessage.value = ''
   responseStatus.value = null
   latencyMs.value = null
+}
+
+function clearAll() {
+  clearPrompt()
+  clearOutput()
 }
 
 function copyOutput() {
@@ -261,8 +306,8 @@ onMounted(() => {
             OpenAI Compatible
           </Badge>
         </div>
-        <p class="text-xs text-zinc-500 mt-0.5">
-          Verify end-to-end proxy completions, test real-time SSE streaming, and benchmark models.
+        <p class="text-xs text-zinc-400 mt-0.5">
+          Verify end-to-end proxy completions, test real-time SSE streaming, and benchmark model responses.
         </p>
       </div>
 
@@ -270,179 +315,184 @@ onMounted(() => {
         <Button
           variant="outline"
           size="sm"
-          @click="showCurlModal = !showCurlModal"
+          @click="showCurlModal = true"
+          class="h-8 text-xs bg-zinc-900/60 border-zinc-800 hover:bg-zinc-800 text-zinc-300 gap-1.5"
         >
           <Terminal class="h-3.5 w-3.5 text-zinc-400" />
-          <span>{{ showCurlModal ? 'Hide cURL' : 'cURL Command' }}</span>
+          <span>cURL Command</span>
         </Button>
-      </div>
-    </div>
-
-    <!-- cURL preview panel (expandable) -->
-    <div
-      v-if="showCurlModal"
-      class="p-4 rounded-xl bg-[#18191d] border border-[#2c2e36] space-y-2 text-xs font-mono animate-in fade-in duration-150"
-    >
-      <div class="flex items-center justify-between text-zinc-400">
-        <span class="text-[11px] uppercase tracking-wider font-sans font-medium text-zinc-500">Terminal Command</span>
         <Button
-          variant="secondary"
+          v-if="promptText || responseText || errorMessage"
+          variant="ghost"
           size="sm"
-          @click="copyCurl"
-          class="h-7 text-[11px]"
+          @click="clearAll"
+          :disabled="isRunning"
+          class="h-8 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 gap-1.5"
         >
-          <Check v-if="copiedCurl" class="h-3.5 w-3.5 text-emerald-400" />
-          <Copy v-else class="h-3.5 w-3.5" />
-          <span>{{ copiedCurl ? 'Copied' : 'Copy cURL' }}</span>
+          <Trash2 class="h-3.5 w-3.5 text-zinc-500" />
+          <span>Reset All</span>
         </Button>
       </div>
-      <pre class="p-3 rounded-lg bg-[#101114] border border-[#24262e] text-zinc-300 text-[11px] overflow-x-auto selection:bg-blue-600/40"><code>{{ curlCommand }}</code></pre>
     </div>
 
     <!-- Workbench Grid (Controls & Input on Left, Output on Right) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-      <!-- Left Column: Settings & Input (5 cols) -->
-      <div class="lg:col-span-5 space-y-4">
-        <!-- Configuration Card -->
-        <Card class="p-4 bg-[#202227] border-[#2c2e36] space-y-3.5 text-xs">
-          <!-- Model Selection -->
-          <div class="space-y-1.5">
-            <label class="block font-medium text-zinc-400">Select Model</label>
-            <div class="relative">
-              <select
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+      <!-- Left Column: Settings & Input Studio (5 cols) -->
+      <div class="lg:col-span-5 flex flex-col space-y-4">
+        <!-- Configuration & Prompt Card -->
+        <Card class="p-4 sm:p-5 bg-[#121316] border-zinc-800/80 shadow-sm flex-1 flex flex-col space-y-4">
+          <!-- Searchable Model Selection & Stream Row -->
+          <div class="space-y-3">
+            <div class="space-y-1.5">
+              <label class="block text-xs font-medium text-zinc-400">Select Model</label>
+              <ModelSelector
                 v-model="selectedModel"
+                :models="availableModels"
                 :disabled="isRunning"
-                class="w-full bg-[#18191d] border border-[#2c2e36] focus:border-blue-500 rounded-lg px-3 py-2 text-zinc-200 font-mono text-xs focus:outline-none transition-colors appearance-none cursor-pointer pr-8"
+              />
+            </div>
+
+            <!-- Streaming Switch Row -->
+            <div class="flex items-center justify-between p-3 rounded-lg bg-[#0d0e11] border border-zinc-800/80">
+              <div class="space-y-0.5">
+                <div class="text-xs font-medium text-zinc-200 flex items-center gap-2">
+                  <span>Stream Output (SSE)</span>
+                  <Badge
+                    variant="outline"
+                    class="font-mono text-[9px] px-1.5 py-0 h-4"
+                    :class="streamMode ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-zinc-500 border-zinc-800'"
+                  >
+                    {{ streamMode ? 'Real-time SSE' : 'Buffered JSON' }}
+                  </Badge>
+                </div>
+                <div class="text-[11px] text-zinc-500">Stream tokens as they are generated by upstream</div>
+              </div>
+              <Switch
+                :checked="streamMode"
+                @update:checked="streamMode = $event"
+                :disabled="isRunning"
+              />
+            </div>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="space-y-1.5">
+            <span class="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Quick Presets</span>
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <button
+                v-for="p in presets"
+                :key="p.label"
+                type="button"
+                :disabled="isRunning"
+                @click="selectPreset(p.prompt)"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0d0e11] border border-zinc-800/80 hover:border-blue-500/40 text-xs text-zinc-300 hover:text-white transition-all shrink-0 cursor-pointer group disabled:opacity-50"
               >
-                <option v-for="m in availableModels" :key="m" :value="m">
-                  {{ m }}
-                </option>
-              </select>
-              <Cpu class="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                <component :is="p.icon" class="h-3.5 w-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+                <span>{{ p.label }}</span>
+              </button>
             </div>
           </div>
 
-          <!-- Streaming Switch -->
-          <div class="flex items-center justify-between pt-1">
-            <div>
-              <div class="font-medium text-white">Stream Output (SSE)</div>
-              <div class="text-[11px] text-zinc-500">Stream response tokens incrementally</div>
-            </div>
-            <Switch
-              :checked="streamMode"
-              @update:checked="streamMode = $event"
-              :disabled="isRunning"
-            />
-          </div>
-
-          <!-- Collapsible System Prompt -->
-          <div class="pt-2 border-t border-[#2a2d34]">
+          <!-- Collapsible System Prompt Drawer -->
+          <div class="rounded-lg bg-[#0d0e11] border border-zinc-800/80 overflow-hidden">
             <button
               type="button"
               @click="showSystemPrompt = !showSystemPrompt"
-              class="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center justify-between w-full cursor-pointer"
+              class="w-full px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 flex items-center justify-between cursor-pointer transition-colors bg-zinc-900/30"
             >
-              <span>System Prompt (Optional)</span>
-              <span>{{ showSystemPrompt ? '▲' : '▼' }}</span>
+              <span class="flex items-center gap-1.5">
+                <Sparkles class="h-3 w-3 text-purple-400" />
+                <span>System Instructions</span>
+                <span v-if="systemPrompt.trim()" class="text-[10px] text-purple-400 font-mono">(active)</span>
+                <span v-else class="text-[10px] text-zinc-600">(optional)</span>
+              </span>
+              <component :is="showSystemPrompt ? ChevronUp : ChevronDown" class="h-3.5 w-3.5 text-zinc-500" />
             </button>
-            <div v-if="showSystemPrompt" class="mt-2">
+            <div v-if="showSystemPrompt" class="p-3 border-t border-zinc-800/80">
               <textarea
                 v-model="systemPrompt"
                 :disabled="isRunning"
                 rows="2"
-                placeholder="Optional instructions for the model..."
-                class="w-full bg-[#18191d] border border-[#2c2e36] focus:border-blue-500 rounded-lg p-2.5 text-zinc-200 text-xs placeholder:text-zinc-600 focus:outline-none transition-colors"
+                placeholder="Optional instructions guiding tone, formatting, or constraints..."
+                class="w-full bg-[#121316] border border-zinc-800/80 focus:border-blue-500/80 rounded-lg p-2.5 text-zinc-200 text-xs placeholder:text-zinc-600 focus:outline-none transition-colors resize-y font-sans leading-relaxed"
               />
             </div>
           </div>
-        </Card>
 
-        <!-- Quick Presets -->
-        <div class="space-y-1.5">
-          <span class="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Quick Presets</span>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              v-for="p in presets"
-              :key="p.label"
-              type="button"
-              :disabled="isRunning"
-              @click="selectPreset(p.prompt)"
-              class="flex items-center gap-2 p-2.5 rounded-lg bg-[#202227] border border-[#2c2e36] hover:border-blue-500/40 text-left text-xs text-zinc-300 hover:text-white transition-all cursor-pointer group"
-            >
-              <component :is="p.icon" class="h-3.5 w-3.5 text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
-              <span class="truncate">{{ p.label }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Prompt Textarea Card -->
-        <Card class="p-4 bg-[#202227] border-[#2c2e36] space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="text-xs font-medium text-zinc-400">User Prompt</label>
-            <Button
-              v-if="promptText"
-              variant="ghost"
-              size="sm"
-              @click="clearAll"
-              :disabled="isRunning"
-              class="h-6 px-2 text-[11px] text-zinc-500 hover:text-zinc-300 gap-1"
-            >
-              <Trash2 class="h-3 w-3" />
-              <span>Clear</span>
-            </Button>
-          </div>
-
-          <textarea
-            v-model="promptText"
-            :disabled="isRunning"
-            @keydown="onKeydown"
-            rows="6"
-            placeholder="Type your prompt here... (Press Cmd+Enter or Ctrl+Enter to run)"
-            class="w-full bg-[#18191d] border border-[#2c2e36] focus:border-blue-500 rounded-lg p-3 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none transition-colors resize-y leading-relaxed font-sans"
-          />
-
-          <div class="flex items-center justify-between pt-1">
-            <span class="text-[10px] text-zinc-500 font-mono">
-              {{ promptText.length }} chars • {{ promptText.split(/\s+/).filter(Boolean).length }} words
-            </span>
-
-            <div class="flex items-center gap-2">
+          <!-- User Prompt Textarea Area -->
+          <div class="space-y-2 flex-1 flex flex-col pt-1">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-zinc-300">User Prompt</label>
               <Button
-                v-if="isRunning"
-                variant="destructive"
+                v-if="promptText"
+                variant="ghost"
                 size="sm"
-                @click="stopTest"
-                class="gap-1.5"
+                @click="clearPrompt"
+                :disabled="isRunning"
+                class="h-6 px-2 text-[11px] text-zinc-500 hover:text-zinc-300 gap-1"
               >
-                <Square class="h-3.5 w-3.5 fill-current" />
-                <span>Stop</span>
+                <Trash2 class="h-3 w-3" />
+                <span>Clear Input</span>
               </Button>
+            </div>
 
-              <Button
-                v-else
-                variant="default"
-                size="sm"
-                :disabled="!promptText.trim()"
-                @click="runTest"
-                class="gap-1.5"
-              >
-                <Play class="h-3.5 w-3.5 fill-current" />
-                <span>Run Prompt</span>
-              </Button>
+            <textarea
+              v-model="promptText"
+              :disabled="isRunning"
+              @keydown="onKeydown"
+              rows="6"
+              placeholder="Type your prompt here... (Press Cmd+Enter or Ctrl+Enter to run)"
+              class="w-full flex-1 min-h-[160px] bg-[#0d0e11] border border-zinc-800/80 focus:border-blue-500/80 rounded-xl p-3.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-all resize-y leading-relaxed font-sans"
+            />
+
+            <!-- Prompt Card Bottom Toolbar -->
+            <div class="flex items-center justify-between pt-1">
+              <div class="flex items-center gap-2 text-[11px] text-zinc-500 font-mono">
+                <span>{{ promptText.length }} chars</span>
+                <span>•</span>
+                <span>{{ wordCount }} words</span>
+                <span class="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] bg-zinc-900 border border-zinc-800 rounded text-zinc-400">
+                  ⌘↵
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <Button
+                  v-if="isRunning"
+                  variant="destructive"
+                  size="sm"
+                  @click="stopTest"
+                  class="gap-1.5 h-8 text-xs font-medium"
+                >
+                  <Square class="h-3 w-3 fill-current" />
+                  <span>Stop</span>
+                </Button>
+
+                <Button
+                  v-else
+                  variant="default"
+                  size="sm"
+                  :disabled="!promptText.trim()"
+                  @click="runTest"
+                  class="gap-1.5 h-8 text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/20 disabled:opacity-50"
+                >
+                  <Play class="h-3 w-3 fill-current" />
+                  <span>Run Prompt</span>
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
       </div>
 
-      <!-- Right Column: Live Output & Telemetry (7 cols) -->
-      <div class="lg:col-span-7 space-y-4">
-        <!-- Output Card -->
-        <Card class="bg-[#202227] border-[#2c2e36] overflow-hidden flex flex-col min-h-[460px]">
-          <!-- Card Header & Status Bar -->
-          <div class="px-5 py-3 border-b border-[#282a32] flex items-center justify-between bg-[#1b1d22]">
+      <!-- Right Column: Live Output & Telemetry Console (7 cols) -->
+      <div class="lg:col-span-7 flex flex-col">
+        <Card class="bg-[#121316] border-zinc-800/80 overflow-hidden flex flex-col flex-1 min-h-[520px] shadow-sm">
+          <!-- Console Chrome Header -->
+          <div class="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/40">
             <div class="flex items-center gap-2.5">
               <span class="text-xs font-semibold text-white">Execution Output</span>
-              <!-- Status indicator -->
+              <!-- Status Indicator -->
               <Badge
                 v-if="isRunning"
                 variant="outline"
@@ -461,25 +511,71 @@ onMounted(() => {
                 <AlertCircle v-else class="h-3 w-3" />
                 {{ responseStatus }} {{ responseStatus < 400 ? 'OK' : 'Error' }}
               </Badge>
+              <Badge
+                v-else
+                variant="outline"
+                class="font-mono text-[10px] text-zinc-500 border-zinc-800"
+              >
+                Idle
+              </Badge>
             </div>
 
-            <!-- Header Actions -->
+            <!-- Header Actions, Mode Toggle & Latency -->
             <div class="flex items-center gap-2">
-              <span v-if="latencyMs !== null" class="text-[11px] font-mono text-zinc-400 flex items-center gap-1">
+              <!-- View Mode Toggle (Markdown vs Raw) -->
+              <div
+                v-if="responseText"
+                class="flex items-center rounded-lg bg-zinc-900 border border-zinc-800 p-0.5 text-[10px] font-medium"
+              >
+                <button
+                  type="button"
+                  @click="viewMode = 'markdown'"
+                  class="px-2 py-0.5 rounded cursor-pointer transition-colors"
+                  :class="viewMode === 'markdown' ? 'bg-zinc-800 text-white font-semibold shadow-xs' : 'text-zinc-400 hover:text-zinc-200'"
+                >
+                  Markdown
+                </button>
+                <button
+                  type="button"
+                  @click="viewMode = 'raw'"
+                  class="px-2 py-0.5 rounded cursor-pointer transition-colors"
+                  :class="viewMode === 'raw' ? 'bg-zinc-800 text-white font-semibold shadow-xs' : 'text-zinc-400 hover:text-zinc-200'"
+                >
+                  Raw
+                </button>
+              </div>
+
+              <Badge
+                v-if="latencyMs !== null"
+                variant="outline"
+                class="font-mono text-[10px] text-zinc-400 border-zinc-800 bg-zinc-900/60 gap-1"
+              >
                 <Clock class="h-3 w-3 text-zinc-500" />
-                {{ latencyMs }}ms
-              </span>
+                <span>{{ latencyMs }}ms</span>
+              </Badge>
+
               <Button
                 v-if="responseText"
                 variant="secondary"
                 size="sm"
                 @click="copyOutput"
-                class="h-7 text-[11px]"
+                class="h-7 text-[11px] gap-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
                 title="Copy response text"
               >
                 <Check v-if="copiedOutput" class="h-3 w-3 text-emerald-400" />
                 <Copy v-else class="h-3 w-3" />
                 <span>{{ copiedOutput ? 'Copied' : 'Copy' }}</span>
+              </Button>
+
+              <Button
+                v-if="responseText || errorMessage"
+                variant="ghost"
+                size="sm"
+                @click="clearOutput"
+                class="h-7 px-2 text-[11px] text-zinc-500 hover:text-zinc-300"
+                title="Clear output console"
+              >
+                <Trash2 class="h-3 w-3" />
               </Button>
             </div>
           </div>
@@ -487,35 +583,56 @@ onMounted(() => {
           <!-- Error Alert Banner -->
           <div
             v-if="errorMessage"
-            class="p-4 bg-red-500/10 border-b border-red-500/20 text-red-300 text-xs flex items-start gap-2.5 font-mono"
+            class="p-4 bg-red-500/10 border-b border-red-500/20 text-red-300 text-xs flex items-start justify-between gap-3 font-mono"
           >
-            <AlertCircle class="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
-            <div class="space-y-1 flex-1 min-w-0">
-              <div class="font-semibold text-red-300 font-sans">Execution Failure</div>
-              <p class="text-[11px] text-red-200/90 break-all">{{ errorMessage }}</p>
+            <div class="flex items-start gap-2.5 min-w-0">
+              <AlertCircle class="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+              <div class="space-y-1 min-w-0">
+                <div class="font-semibold text-red-300 font-sans">Execution Failure</div>
+                <p class="text-[11px] text-red-200/90 break-all leading-relaxed">{{ errorMessage }}</p>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              @click="runTest"
+              class="h-7 text-xs border-red-500/30 hover:bg-red-500/20 text-red-200 shrink-0"
+            >
+              Retry
+            </Button>
           </div>
 
-          <!-- Output Body -->
-          <div class="p-5 flex-1 flex flex-col overflow-y-auto max-h-[560px]">
+          <!-- Output Body (Terminal Window) -->
+          <div class="p-5 flex-1 flex flex-col overflow-y-auto bg-[#090a0c]">
             <!-- Empty state when no test has run yet -->
             <div
               v-if="!responseText && !isRunning && !errorMessage"
               class="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3 my-auto"
             >
-              <div class="h-12 w-12 rounded-xl bg-zinc-800/80 border border-zinc-700/60 text-zinc-400 flex items-center justify-center">
+              <div class="h-12 w-12 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center">
                 <Terminal class="h-6 w-6 text-zinc-500" />
               </div>
               <div class="space-y-1">
-                <h4 class="text-xs font-semibold text-zinc-300">Ready to Test</h4>
-                <p class="text-[11px] text-zinc-500 max-w-xs leading-relaxed">
-                  Select a model, pick a preset or write a custom prompt, then click "Run Prompt" to view live response output.
+                <h4 class="text-xs font-semibold text-zinc-300">Awaiting Execution</h4>
+                <p class="text-[11px] text-zinc-500 max-w-sm leading-relaxed">
+                  Select a model, pick a quick preset or type your custom prompt, then press
+                  <kbd class="px-1 py-0.5 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-zinc-400 font-mono">⌘↵</kbd>
+                  or click "Run Prompt" to view real-time streaming output.
                 </p>
               </div>
             </div>
 
-            <!-- Live Text Output -->
-            <div v-else class="font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed select-text">
+            <!-- Rendered Markdown Output -->
+            <div v-else-if="viewMode === 'markdown'" class="relative flex-1 select-text">
+              <div class="markdown-body" v-html="renderedMarkdown" />
+              <span
+                v-if="isRunning"
+                class="inline-block w-2 h-4 ml-1 bg-blue-400 align-middle animate-pulse"
+              />
+            </div>
+
+            <!-- Raw Monospace Output -->
+            <div v-else class="font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed select-text flex-1">
               {{ responseText }}
               <span
                 v-if="isRunning"
@@ -526,19 +643,74 @@ onMounted(() => {
 
           <!-- Bottom Telemetry Bar -->
           <div
-            v-if="responseText || latencyMs !== null"
-            class="px-5 py-2.5 border-t border-[#282a32] bg-[#1b1d22] flex flex-wrap items-center justify-between text-[11px] font-mono text-zinc-400 gap-2"
+            class="px-5 py-2.5 border-t border-zinc-800/80 bg-zinc-900/40 flex flex-wrap items-center justify-between text-[11px] font-mono text-zinc-500 gap-2"
           >
-            <div class="flex items-center gap-4">
-              <span>Model: <strong class="text-zinc-200">{{ selectedModel }}</strong></span>
-              <span>Mode: <strong class="text-zinc-200">{{ streamMode ? 'SSE Stream' : 'JSON' }}</strong></span>
+            <div class="flex items-center gap-3">
+              <span>Model: <strong class="text-zinc-300 font-semibold">{{ selectedModel }}</strong></span>
+              <span>•</span>
+              <span>Mode: <strong class="text-zinc-300 font-semibold">{{ streamMode ? 'SSE Stream' : 'Buffered JSON' }}</strong></span>
+              <span>•</span>
+              <span class="flex items-center gap-1">
+                <FileText class="h-3 w-3 text-zinc-500" />
+                <span>Format: <strong class="text-zinc-300 capitalize">{{ viewMode }}</strong></span>
+              </span>
             </div>
-            <div class="flex items-center gap-4">
-              <span>Output length: <strong class="text-zinc-200">{{ responseText.length }} chars</strong></span>
+            <div class="flex items-center gap-3">
+              <span v-if="responseText">
+                {{ responseText.length }} chars <span class="text-zinc-600">(~{{ estimatedTokens }} tokens)</span>
+              </span>
+              <span v-else>Ready</span>
             </div>
           </div>
         </Card>
       </div>
     </div>
+
+    <!-- cURL Command Dialog Modal -->
+    <Dialog :open="showCurlModal" @update:open="(val: boolean) => showCurlModal = val">
+      <DialogContent class="max-w-2xl bg-[#121316] border-zinc-800 p-0 overflow-hidden">
+        <DialogHeader class="px-6 py-4 border-b border-zinc-800/80 bg-zinc-900/40">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <Terminal class="h-4 w-4" />
+            </div>
+            <div>
+              <DialogTitle class="text-sm font-semibold text-white">cURL Command Snippet</DialogTitle>
+              <DialogDescription class="text-xs text-zinc-400 mt-0.5">
+                Execute requests against this proxy instance from terminal or CLI scripts
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div class="p-6 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">Terminal Command</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              @click="copyCurl"
+              class="h-7 text-xs gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+            >
+              <Check v-if="copiedCurl" class="h-3 w-3 text-emerald-400" />
+              <Copy v-else class="h-3 w-3" />
+              <span>{{ copiedCurl ? 'Copied to Clipboard' : 'Copy cURL' }}</span>
+            </Button>
+          </div>
+
+          <pre class="p-4 rounded-xl bg-[#090a0c] border border-zinc-800/80 text-zinc-300 font-mono text-xs overflow-x-auto selection:bg-blue-600/40 leading-relaxed"><code>{{ curlCommand }}</code></pre>
+
+          <p class="text-[11px] text-zinc-500">
+            Replace <code class="text-blue-400 font-mono">&lt;ADMIN_API_KEY&gt;</code> with your proxy admin key or API key configured in environment variables.
+          </p>
+        </div>
+
+        <DialogFooter class="px-6 py-3 border-t border-zinc-800/80 bg-zinc-900/30 flex justify-end">
+          <Button variant="outline" size="sm" @click="showCurlModal = false">
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
