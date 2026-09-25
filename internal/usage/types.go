@@ -26,6 +26,7 @@ type RequestRecord struct {
 type ModelUsage struct {
 	Model            string  `json:"model"`
 	Requests         int64   `json:"requests"`
+	RequestCount     int64   `json:"request_count"`
 	PromptTokens     int64   `json:"prompt_tokens"`
 	CompletionTokens int64   `json:"completion_tokens"`
 	TotalTokens      int64   `json:"total_tokens"`

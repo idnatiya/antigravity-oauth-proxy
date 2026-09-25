@@ -11,6 +11,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { FlaskConical } from '@lucide/vue'
 import type { ModelStat } from '@/types'
@@ -21,15 +22,20 @@ const props = defineProps<{
   models?: ModelStat[]
 }>()
 
+function getModelRequests(m: ModelStat): number {
+  return Number(m.requests ?? m.request_count ?? 0)
+}
+
 const totalReqs = computed(() => {
   if (!props.models) return 0
-  return props.models.reduce((sum, m) => sum + m.request_count, 0)
+  return props.models.reduce((sum, m) => sum + getModelRequests(m), 0)
 })
 
-function formatTokens(count: number): string {
-  if (count >= 1_000_000) return (count / 1_000_000).toFixed(2) + 'M'
-  if (count >= 1_000) return (count / 1_000).toFixed(1) + 'k'
-  return count.toLocaleString()
+function formatTokens(count?: number): string {
+  const n = Number(count ?? 0)
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M'
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k'
+  return n.toLocaleString()
 }
 
 function getProviderInfo(modelName: string) {
@@ -98,7 +104,7 @@ function testInPlayground(model: string) {
 
             <!-- Requests -->
             <TableCell class="text-right font-mono text-zinc-300 text-xs">
-              {{ m.request_count.toLocaleString() }}
+              {{ getModelRequests(m).toLocaleString() }}
             </TableCell>
 
             <!-- Tokens -->
@@ -110,11 +116,11 @@ function testInPlayground(model: string) {
             <TableCell class="text-right">
               <div class="flex items-center justify-end gap-2.5">
                 <Progress
-                  :model-value="totalReqs > 0 ? (m.request_count / totalReqs) * 100 : 0"
+                  :model-value="totalReqs > 0 ? (getModelRequests(m) / totalReqs) * 100 : 0"
                   class="w-24 h-1.5 bg-zinc-800"
                 />
                 <span class="font-mono text-[11px] text-zinc-400 w-9 text-right font-medium">
-                  {{ totalReqs > 0 ? Math.round((m.request_count / totalReqs) * 100) : 0 }}%
+                  {{ totalReqs > 0 ? Math.round((getModelRequests(m) / totalReqs) * 100) : 0 }}%
                 </span>
               </div>
             </TableCell>

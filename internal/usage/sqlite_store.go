@@ -269,6 +269,7 @@ func (s *SQLiteStore) GetStats(ctx context.Context, timeRange string) (*StatsSum
 		for mRows.Next() {
 			var mu ModelUsage
 			if err := mRows.Scan(&mu.Model, &mu.Requests, &mu.PromptTokens, &mu.CompletionTokens, &mu.TotalTokens, &mu.CostSavings); err == nil {
+				mu.RequestCount = mu.Requests
 				summary.ModelBreakdown = append(summary.ModelBreakdown, mu)
 			}
 		}

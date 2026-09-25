@@ -81,6 +81,7 @@ func (m *MemoryStore) GetStats(ctx context.Context, timeRange string) (*StatsSum
 			modelMap[r.Model] = mu
 		}
 		mu.Requests++
+		mu.RequestCount++
 		mu.PromptTokens += int64(r.PromptTokens)
 		mu.CompletionTokens += int64(r.CompletionTokens)
 		mu.TotalTokens += int64(r.TotalTokens)

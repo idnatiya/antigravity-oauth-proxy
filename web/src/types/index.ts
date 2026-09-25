@@ -10,7 +10,8 @@ export interface LoginResponse {
 
 export interface ModelStat {
   model: string
-  request_count: number
+  requests?: number
+  request_count?: number
   prompt_tokens: number
   completion_tokens: number
   total_tokens: number
