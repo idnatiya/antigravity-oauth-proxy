@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { marked } from 'marked'
 import {
@@ -249,6 +249,22 @@ function copyOutput() {
   setTimeout(() => (copiedOutput.value = false), 2000)
 }
 
+const outputContainerRef = ref<HTMLElement | null>(null)
+
+function scrollToBottom() {
+  if (outputContainerRef.value) {
+    outputContainerRef.value.scrollTop = outputContainerRef.value.scrollHeight
+  }
+}
+
+watch(responseText, () => {
+  if (isRunning.value) {
+    nextTick(() => {
+      scrollToBottom()
+    })
+  }
+})
+
 const curlCommand = computed(() => {
   const origin = window.location.origin
   const escapedPrompt = promptText.value.replace(/"/g, '\\"').replace(/\n/g, ' ') || 'Hello!'
@@ -336,11 +352,11 @@ onMounted(() => {
     </div>
 
     <!-- Workbench Grid (Controls & Input on Left, Output on Right) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       <!-- Left Column: Settings & Input Studio (5 cols) -->
       <div class="lg:col-span-5 flex flex-col space-y-4">
         <!-- Configuration & Prompt Card -->
-        <Card class="p-4 sm:p-5 bg-[#121316] border-zinc-800/80 shadow-sm flex-1 flex flex-col space-y-4">
+        <Card class="p-4 sm:p-5 bg-[#121316] border-zinc-800/80 shadow-sm flex flex-col space-y-4">
           <!-- Searchable Model Selection & Stream Row -->
           <div class="space-y-3">
             <div class="space-y-1.5">
@@ -487,9 +503,9 @@ onMounted(() => {
 
       <!-- Right Column: Live Output & Telemetry Console (7 cols) -->
       <div class="lg:col-span-7 flex flex-col">
-        <Card class="bg-[#121316] border-zinc-800/80 overflow-hidden flex flex-col flex-1 min-h-[520px] shadow-sm">
+        <Card class="bg-[#121316] border-zinc-800/80 overflow-hidden flex flex-col h-[580px] lg:h-[640px] shadow-sm">
           <!-- Console Chrome Header -->
-          <div class="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/40">
+          <div class="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/40 shrink-0">
             <div class="flex items-center gap-2.5">
               <span class="text-xs font-semibold text-white">Execution Output</span>
               <!-- Status Indicator -->
@@ -583,7 +599,7 @@ onMounted(() => {
           <!-- Error Alert Banner -->
           <div
             v-if="errorMessage"
-            class="p-4 bg-red-500/10 border-b border-red-500/20 text-red-300 text-xs flex items-start justify-between gap-3 font-mono"
+            class="p-4 bg-red-500/10 border-b border-red-500/20 text-red-300 text-xs flex items-start justify-between gap-3 font-mono shrink-0"
           >
             <div class="flex items-start gap-2.5 min-w-0">
               <AlertCircle class="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
@@ -602,8 +618,11 @@ onMounted(() => {
             </Button>
           </div>
 
-          <!-- Output Body (Terminal Window) -->
-          <div class="p-5 flex-1 flex flex-col overflow-y-auto bg-[#090a0c]">
+          <!-- Output Body (Terminal Window - Scrollable) -->
+          <div
+            ref="outputContainerRef"
+            class="p-5 flex-1 min-h-0 flex flex-col overflow-y-auto bg-[#090a0c] select-text"
+          >
             <!-- Empty state when no test has run yet -->
             <div
               v-if="!responseText && !isRunning && !errorMessage"
@@ -643,7 +662,7 @@ onMounted(() => {
 
           <!-- Bottom Telemetry Bar -->
           <div
-            class="px-5 py-2.5 border-t border-zinc-800/80 bg-zinc-900/40 flex flex-wrap items-center justify-between text-[11px] font-mono text-zinc-500 gap-2"
+            class="px-5 py-2.5 border-t border-zinc-800/80 bg-zinc-900/40 flex flex-wrap items-center justify-between text-[11px] font-mono text-zinc-500 gap-2 shrink-0"
           >
             <div class="flex items-center gap-3">
               <span>Model: <strong class="text-zinc-300 font-semibold">{{ selectedModel }}</strong></span>

@@ -78,7 +78,7 @@ func main() {
 	}
 
 	// Create server with provider, project ID, and usage store
-	srvOpts := []server.Option{server.WithAccountPool(accounts), server.WithGoogleAuth(accounts)}
+	srvOpts := []server.Option{server.WithAccountPool(accounts)}
 	if usageStore != nil {
 		srvOpts = append(srvOpts, server.WithUsageStore(usageStore))
 	}

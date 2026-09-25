@@ -2,15 +2,12 @@
 import { onMounted, ref, computed } from 'vue'
 import {
   Users,
-  Plus,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
   RefreshCw,
   Search,
   AlertTriangle,
   Activity,
-  ArrowRight,
   X,
   Zap,
 } from '@lucide/vue'
@@ -25,16 +22,8 @@ import type { AccountItem, AccountTestResult } from '@/types'
 
 const usageStore = useUsageStore()
 
-interface AuthStatus {
-  status: string
-  authorizationUrl?: string
-}
-
 const accounts = ref<AccountItem[]>([])
 const loaded = ref(false)
-const webLoginEnabled = ref(false)
-const authorizationUrl = ref('')
-const redirectInput = ref('')
 const busy = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
@@ -61,36 +50,10 @@ async function run(action: () => Promise<void>) {
 }
 
 async function load() {
-  const res = await apiClient.get<{ accounts: AccountItem[]; webLoginEnabled: boolean }>('/api/accounts')
+  const res = await apiClient.get<{ accounts: AccountItem[] }>('/api/accounts')
   accounts.value = res.accounts || []
-  webLoginEnabled.value = res.webLoginEnabled
   loaded.value = true
   usageStore.fetchStats().catch(() => {}) // keep sidebar account count in sync
-}
-
-function startLogin() {
-  return run(async () => {
-    const res = await apiClient.post<AuthStatus>('/api/accounts/auth/start')
-    authorizationUrl.value = res.authorizationUrl || ''
-    if (authorizationUrl.value) {
-      window.open(authorizationUrl.value, '_blank', 'noopener')
-    }
-  })
-}
-
-function cancelLogin() {
-  authorizationUrl.value = ''
-  redirectInput.value = ''
-}
-
-function completeLogin() {
-  return run(async () => {
-    await apiClient.post<AuthStatus>('/api/accounts/auth/status', { code: redirectInput.value.trim() })
-    authorizationUrl.value = ''
-    redirectInput.value = ''
-    successMessage.value = 'Account successfully added to the pool!'
-    await load()
-  })
 }
 
 function openDeleteModal(acc: AccountItem) {
@@ -256,17 +219,6 @@ onMounted(() => run(load))
           <RefreshCw class="h-3.5 w-3.5" :class="busy ? 'animate-spin' : ''" />
           <span>Refresh</span>
         </Button>
-
-        <Button
-          v-if="webLoginEnabled"
-          variant="default"
-          size="sm"
-          :disabled="busy || testingAll"
-          @click="startLogin"
-        >
-          <Plus class="h-3.5 w-3.5" />
-          <span>Add Google Account</span>
-        </Button>
       </div>
     </div>
 
@@ -330,104 +282,6 @@ onMounted(() => run(load))
         :icon="Activity"
         color="purple"
       />
-    </div>
-
-    <!-- Interactive Pending Login Wizard -->
-    <div
-      v-if="authorizationUrl"
-      class="p-6 rounded-2xl bg-[#1b1d24] border border-blue-500/30 shadow-xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-200"
-    >
-      <div class="flex items-start justify-between">
-        <div class="space-y-1">
-          <div class="flex items-center gap-2">
-            <span class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-            <h3 class="text-sm font-semibold text-white">Connect New Google Account</h3>
-          </div>
-          <p class="text-xs text-zinc-400">
-            Complete the standard OAuth sign-in flow to authorize this proxy to query Gemini Code Assist.
-          </p>
-        </div>
-
-        <button
-          @click="cancelLogin"
-          class="p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors cursor-pointer"
-          title="Cancel"
-        >
-          <X class="h-4 w-4" />
-        </button>
-      </div>
-
-      <!-- Step Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-        <div class="p-3.5 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="h-5 w-5 rounded-full bg-blue-500/20 text-blue-400 font-mono text-[11px] font-bold flex items-center justify-center">1</span>
-            <span class="font-medium text-white">Open Sign-In</span>
-          </div>
-          <p class="text-zinc-400 text-[11px]">
-            Sign in with the Google account in the newly opened browser tab.
-          </p>
-          <a
-            :href="authorizationUrl"
-            target="_blank"
-            rel="noopener"
-            class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 hover:underline pt-1"
-          >
-            <span>Re-open Auth Tab</span>
-            <ExternalLink class="h-3 w-3" />
-          </a>
-        </div>
-
-        <div class="p-3.5 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="h-5 w-5 rounded-full bg-blue-500/20 text-blue-400 font-mono text-[11px] font-bold flex items-center justify-center">2</span>
-            <span class="font-medium text-white">Approve Access</span>
-          </div>
-          <p class="text-zinc-400 text-[11px] leading-relaxed">
-            Google redirects to <span class="font-mono text-zinc-300 bg-zinc-800/80 px-1 py-0.5 rounded">localhost:51121/…</span>, which fails to load. That is normal.
-          </p>
-        </div>
-
-        <div class="p-3.5 rounded-xl bg-[#202227] border border-[#2c2e36] space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="h-5 w-5 rounded-full bg-blue-500/20 text-blue-400 font-mono text-[11px] font-bold flex items-center justify-center">3</span>
-            <span class="font-medium text-white">Paste Callback URL</span>
-          </div>
-          <p class="text-zinc-400 text-[11px]">
-            Copy the full URL from the address bar of that failed tab and submit it below.
-          </p>
-        </div>
-      </div>
-
-      <!-- Input Form -->
-      <form @submit.prevent="completeLogin" class="flex flex-col sm:flex-row gap-2.5 pt-1">
-        <div class="relative flex-1">
-          <input
-            v-model="redirectInput"
-            required
-            placeholder="http://localhost:51121/oauth-callback?state=…&code=…"
-            class="w-full bg-[#141518] border border-[#2c2e36] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 font-mono placeholder:text-zinc-600 focus:outline-none transition-colors shadow-inner"
-          />
-        </div>
-        <div class="flex items-center gap-2">
-          <Button
-            type="submit"
-            :disabled="busy || !redirectInput.trim()"
-            class="flex-1 sm:flex-initial"
-          >
-            <RefreshCw v-if="busy" class="h-3.5 w-3.5 animate-spin" />
-            <ArrowRight v-else class="h-3.5 w-3.5" />
-            <span>{{ busy ? 'Verifying...' : 'Finish Authorization' }}</span>
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            @click="cancelLogin"
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
     </div>
 
     <!-- Filter & Search Toolbar -->
@@ -515,33 +369,28 @@ onMounted(() => run(load))
     <!-- Empty State: Zero accounts configured -->
     <div
       v-else-if="accounts.length === 0"
-      class="p-10 rounded-2xl bg-[#202227] border border-[#2c2e36] text-center space-y-4 max-w-lg mx-auto my-8"
+      class="p-10 rounded-2xl bg-[#121316] border border-zinc-800/80 text-center space-y-4 max-w-lg mx-auto my-8 shadow-xs"
     >
       <div class="h-12 w-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 mx-auto flex items-center justify-center">
         <Users class="h-6 w-6" />
       </div>
       <div class="space-y-1.5">
-        <h3 class="text-sm font-semibold text-white">No Accounts Connected</h3>
+        <h3 class="text-sm font-semibold text-white">No Accounts in Pool</h3>
         <p class="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-          Connect one or more Google accounts to serve Gemini requests. The proxy will seamlessly load-balance and fail over when limits are reached.
+          The proxy loads accounts from <code class="font-mono text-zinc-300">~/.config/antigravity-oauth-proxy/accounts/</code> and <code class="font-mono text-zinc-300">oauth_creds.json</code>.
         </p>
       </div>
-      <div v-if="webLoginEnabled" class="pt-2">
-        <button
-          @click="startLogin"
-          :disabled="busy"
-          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-all shadow-md shadow-blue-500/10 cursor-pointer"
-        >
-          <Plus class="h-4 w-4" />
-          <span>Connect Google Account</span>
-        </button>
+      <div class="rounded-xl bg-[#0d0e11] border border-zinc-800/80 p-3.5 text-left font-mono text-[11px] text-zinc-400 space-y-1">
+        <div class="text-zinc-500 font-sans text-[10px] uppercase font-semibold">To add accounts via CLI:</div>
+        <div class="text-blue-400 font-bold">go run ./cmd/auth</div>
+        <div class="text-zinc-500 text-[10px] pt-1">Or place JSON credentials directly into the accounts directory.</div>
       </div>
     </div>
 
     <!-- Filter Empty State: Search or status filter matches nothing -->
     <div
       v-else-if="filteredAccounts.length === 0"
-      class="p-8 rounded-2xl bg-[#202227] border border-[#2c2e36] text-center space-y-3"
+      class="p-8 rounded-2xl bg-[#121316] border border-zinc-800/80 text-center space-y-3 shadow-xs"
     >
       <div class="text-xs text-zinc-400">
         No accounts match <span v-if="searchQuery">"{{ searchQuery }}"</span>
