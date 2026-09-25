@@ -47,6 +47,13 @@ const geminiCount = computed(() => props.models.filter(m => m.startsWith('gemini
 const claudeCount = computed(() => props.models.filter(m => m.startsWith('claude')).length)
 const otherCount = computed(() => props.models.filter(m => !m.startsWith('gemini') && !m.startsWith('claude')).length)
 
+const categories = computed(() => [
+  { key: 'all' as const, label: 'All', count: props.models.length },
+  { key: 'gemini' as const, label: 'Gemini', count: geminiCount.value },
+  { key: 'claude' as const, label: 'Claude', count: claudeCount.value },
+  ...(otherCount.value > 0 ? [{ key: 'other' as const, label: 'Other', count: otherCount.value }] : []),
+])
+
 const filteredModels = computed(() => {
   let list = props.models
 
@@ -158,16 +165,16 @@ onUnmounted(() => {
     <!-- Search & Selection Popover Dropdown -->
     <div
       v-if="isOpen"
-      class="absolute left-0 top-full mt-2 w-full z-50 rounded-xl bg-[#141519] border border-zinc-800/90 shadow-2xl shadow-black/80 overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-[380px]"
+      class="absolute left-0 top-full mt-2 w-full z-50 rounded-xl bg-[#121316] border border-zinc-700/80 shadow-2xl shadow-black ring-1 ring-white/5 overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-[420px]"
     >
       <!-- Search Bar -->
-      <div class="p-2.5 border-b border-zinc-800/80 bg-zinc-900/60 flex items-center gap-2">
+      <div class="p-3 border-b border-zinc-800/80 bg-zinc-900/50 flex items-center gap-2.5">
         <Search class="h-3.5 w-3.5 text-zinc-400 shrink-0" />
         <input
           ref="searchInputRef"
           v-model="searchQuery"
           type="text"
-          placeholder="Search models (e.g. flash, claude, pro)..."
+          placeholder="Filter models by name, provider, or tier..."
           @keydown="onSearchKeydown"
           class="w-full bg-transparent text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none font-sans"
         />
@@ -177,72 +184,88 @@ onUnmounted(() => {
           @click="searchQuery = ''"
           class="text-zinc-500 hover:text-zinc-300 p-0.5 rounded cursor-pointer"
         >
-          <X class="h-3 w-3" />
+          <X class="h-3.5 w-3.5" />
+        </button>
+        <span
+          v-else
+          class="hidden sm:inline-block text-[10px] font-mono text-zinc-500 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded"
+        >
+          ESC
+        </span>
+      </div>
+
+      <!-- Category Filter Pills Bar -->
+      <div class="px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <button
+          v-for="cat in categories"
+          :key="cat.key"
+          type="button"
+          @click="activeCategory = cat.key"
+          class="px-2.5 py-1 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+          :class="activeCategory === cat.key
+            ? 'bg-blue-600 text-white font-medium shadow-xs shadow-blue-500/25'
+            : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80'"
+        >
+          <span>{{ cat.label }}</span>
+          <span
+            class="text-[10px] font-mono rounded-full px-1.5 py-0.2"
+            :class="activeCategory === cat.key ? 'bg-white/20 text-white' : 'bg-zinc-800 text-zinc-500'"
+          >
+            {{ cat.count }}
+          </span>
         </button>
       </div>
 
-      <!-- Category Filter Pills -->
-      <div class="px-2.5 py-1.5 border-b border-zinc-800/60 bg-zinc-900/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px]">
-        <button
-          type="button"
-          @click="activeCategory = 'all'"
-          class="px-2 py-0.5 rounded-md cursor-pointer transition-colors whitespace-nowrap"
-          :class="activeCategory === 'all' ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40 font-medium' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'"
-        >
-          All ({{ models.length }})
-        </button>
-        <button
-          type="button"
-          @click="activeCategory = 'gemini'"
-          class="px-2 py-0.5 rounded-md cursor-pointer transition-colors whitespace-nowrap"
-          :class="activeCategory === 'gemini' ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40 font-medium' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'"
-        >
-          Gemini ({{ geminiCount }})
-        </button>
-        <button
-          type="button"
-          @click="activeCategory = 'claude'"
-          class="px-2 py-0.5 rounded-md cursor-pointer transition-colors whitespace-nowrap"
-          :class="activeCategory === 'claude' ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40 font-medium' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'"
-        >
-          Claude ({{ claudeCount }})
-        </button>
-        <button
-          v-if="otherCount > 0"
-          type="button"
-          @click="activeCategory = 'other'"
-          class="px-2 py-0.5 rounded-md cursor-pointer transition-colors whitespace-nowrap"
-          :class="activeCategory === 'other' ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40 font-medium' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'"
-        >
-          Other ({{ otherCount }})
-        </button>
-      </div>
-
-      <!-- Models List -->
-      <div class="flex-1 overflow-y-auto p-1.5 space-y-1">
+      <!-- Models List (Single-Line Compact High-Density Rows) -->
+      <div class="flex-1 overflow-y-auto p-1.5 space-y-0.5 max-h-64">
         <button
           v-for="m in filteredModels"
           :key="m"
           type="button"
           @click="selectModel(m)"
-          class="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors cursor-pointer group"
-          :class="m === modelValue ? 'bg-blue-600/15 border border-blue-500/30 text-white' : 'hover:bg-zinc-800/60 text-zinc-300 border border-transparent'"
+          class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors cursor-pointer group"
+          :class="m === modelValue
+            ? 'bg-blue-600/10 text-white border border-blue-500/30'
+            : 'hover:bg-zinc-800/60 text-zinc-300 border border-transparent'"
         >
-          <div class="min-w-0 flex-1 pr-2">
-            <div class="flex items-center gap-2">
-              <span class="font-mono text-xs font-semibold truncate group-hover:text-blue-300 transition-colors" :class="m === modelValue ? 'text-blue-400' : 'text-zinc-200'">
-                {{ m }}
-              </span>
-              <Badge :variant="getTierBadge(m).variant" class="font-mono text-[9px] px-1.5 py-0 h-4">
-                {{ getTierBadge(m).label }}
-              </Badge>
+          <!-- Left: Provider Icon & Model Name -->
+          <div class="flex items-center gap-2.5 min-w-0 pr-2">
+            <div class="shrink-0">
+              <Sparkles
+                v-if="m.startsWith('gemini')"
+                class="h-3.5 w-3.5 text-blue-400"
+              />
+              <Sparkles
+                v-else-if="m.startsWith('claude')"
+                class="h-3.5 w-3.5 text-amber-400"
+              />
+              <Cpu
+                v-else
+                class="h-3.5 w-3.5 text-emerald-400"
+              />
             </div>
-            <div class="text-[10px] text-zinc-500 mt-0.5">
-              Provider: <span class="text-zinc-400">{{ getFamily(m) }}</span>
-            </div>
+            <span
+              class="font-mono text-xs font-semibold truncate group-hover:text-blue-300 transition-colors"
+              :class="m === modelValue ? 'text-blue-400' : 'text-zinc-200'"
+            >
+              {{ m }}
+            </span>
           </div>
 
-          <Check v-if="m === modelValue" class="h-3.5 w-3.5 text-blue-400 shrink-0" />
+          <!-- Right: Tier Badge & Active Checkmark -->
+          <div class="flex items-center gap-2 shrink-0">
+            <Badge
+              :variant="getTierBadge(m).variant"
+              class="font-mono text-[9px] px-1.5 py-0 h-4"
+            >
+              {{ getTierBadge(m).label }}
+            </Badge>
+            <Check
+              v-if="m === modelValue"
+              class="h-3.5 w-3.5 text-blue-400 shrink-0"
+            />
+            <span v-else class="w-3.5 shrink-0" />
+          </div>
         </button>
 
         <!-- No Filter Results State -->
@@ -269,6 +292,15 @@ onUnmounted(() => {
           </span>
           <span class="text-[10px] text-blue-300 font-mono shrink-0">Enter ↵</span>
         </button>
+      </div>
+
+      <!-- Popover Footer Status Bar -->
+      <div
+        v-else
+        class="px-3 py-1.5 border-t border-zinc-800/80 bg-zinc-900/40 flex items-center justify-between text-[10px] font-mono text-zinc-500"
+      >
+        <span>{{ filteredModels.length }} models</span>
+        <span class="hidden sm:inline">Press Esc to close</span>
       </div>
     </div>
   </div>
