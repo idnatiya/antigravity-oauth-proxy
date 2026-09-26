@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   Sparkles,
   Download,
@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Clock,
   ArrowRight,
+  ClipboardPaste,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -53,6 +54,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const copiedOutput = ref(false)
 const copiedBase64 = ref(false)
 const copiedCurl = ref(false)
+const pasteSuccessMessage = ref('')
 const showLightbox = ref(false)
 const showCodeModal = ref(false)
 const generationTimer = ref(0)
@@ -117,12 +119,12 @@ function handleDrop(e: DragEvent) {
   }
 }
 
-function loadFile(file: File) {
+function loadFile(file: File, customName?: string) {
   if (!file.type.startsWith('image/')) {
     errorMessage.value = 'Please select a valid image file (PNG, JPEG, WebP)'
     return
   }
-  editSourceFileName.value = file.name
+  editSourceFileName.value = customName || file.name || 'image.png'
   const reader = new FileReader()
   reader.onload = (ev) => {
     editSourceImage.value = ev.target?.result as string
@@ -137,6 +139,75 @@ function clearEditSource() {
     fileInputRef.value.value = ''
   }
 }
+
+// Clipboard Paste Handler (Ctrl+V / Cmd+V anywhere on the page)
+function handlePaste(e: ClipboardEvent) {
+  const items = e.clipboardData?.items
+  if (!items) return
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) {
+        e.preventDefault()
+        const now = new Date()
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+        loadFile(file, `clipboard-${timeStr}.png`)
+        activeTab.value = 'edit'
+        pasteSuccessMessage.value = 'Image pasted from clipboard!'
+        setTimeout(() => {
+          pasteSuccessMessage.value = ''
+        }, 3000)
+        break
+      }
+    }
+  }
+}
+
+// Button triggered Clipboard read (via Async Clipboard API)
+async function pasteFromClipboardButton() {
+  errorMessage.value = ''
+  try {
+    if (!navigator.clipboard?.read) {
+      errorMessage.value = 'Direct clipboard read is not supported in this browser. Please press Ctrl+V / Cmd+V to paste.'
+      return
+    }
+    const clipboardItems = await navigator.clipboard.read()
+    for (const item of clipboardItems) {
+      const imageType = item.types.find((t) => t.startsWith('image/'))
+      if (imageType) {
+        const blob = await item.getType(imageType)
+        const now = new Date()
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+        const file = new File([blob], `clipboard-${timeStr}.png`, { type: imageType })
+        loadFile(file, file.name)
+        activeTab.value = 'edit'
+        pasteSuccessMessage.value = 'Image pasted from clipboard!'
+        setTimeout(() => {
+          pasteSuccessMessage.value = ''
+        }, 3000)
+        return
+      }
+    }
+    errorMessage.value = 'No image found in clipboard. Please copy or screenshot an image first, then paste.'
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('permission')) {
+      errorMessage.value = 'Clipboard permission denied. You can press Ctrl+V / Cmd+V directly to paste.'
+    } else {
+      errorMessage.value = 'No image in clipboard or permission needed. Press Ctrl+V / Cmd+V to paste.'
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('paste', handlePaste)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('paste', handlePaste)
+})
 
 // Send Current Image to Edit Tab
 function useCurrentAsEditInput() {
@@ -344,6 +415,18 @@ async function copyCode(text: string) {
       </button>
     </div>
 
+    <!-- Paste Success Toast -->
+    <div
+      v-if="pasteSuccessMessage"
+      class="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm animate-in fade-in slide-in-from-top-1 duration-200"
+    >
+      <Check class="h-4 w-4 text-emerald-400 shrink-0" />
+      <div class="flex-1 font-medium">{{ pasteSuccessMessage }}</div>
+      <button class="text-emerald-400 hover:text-emerald-200" @click="pasteSuccessMessage = ''">
+        <X class="h-4 w-4" />
+      </button>
+    </div>
+
     <!-- Main Workspace Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       <!-- Left Column: Controls & Prompt Input (5 cols) -->
@@ -373,14 +456,24 @@ async function copyCode(text: string) {
           <div v-if="activeTab === 'edit'" class="space-y-2">
             <label class="text-xs font-medium text-zinc-300 flex items-center justify-between">
               <span>Source Image to Edit</span>
-              <span v-if="editSourceImage" class="text-zinc-500 font-mono text-[11px]">{{ editSourceFileName }}</span>
+              <div v-if="editSourceImage" class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center gap-1 transition-colors"
+                  title="Paste new image from clipboard"
+                  @click="pasteFromClipboardButton"
+                >
+                  <ClipboardPaste class="h-3 w-3" />
+                  <span>Paste new</span>
+                </button>
+                <span class="text-zinc-500 font-mono text-[11px]">{{ editSourceFileName }}</span>
+              </div>
             </label>
 
             <!-- Upload Box -->
             <div
               v-if="!editSourceImage"
-              class="border-2 border-dashed border-zinc-700/80 hover:border-indigo-500/60 rounded-xl p-6 text-center cursor-pointer transition-colors bg-zinc-950/40"
-              @click="fileInputRef?.click()"
+              class="border-2 border-dashed border-zinc-700/80 hover:border-indigo-500/60 rounded-xl p-5 text-center transition-colors bg-zinc-950/40 space-y-3"
               @dragover.prevent
               @drop="handleDrop"
             >
@@ -391,12 +484,32 @@ async function copyCode(text: string) {
                 class="hidden"
                 @change="handleFileSelect"
               />
-              <div class="flex flex-col items-center gap-2">
-                <div class="h-10 w-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                  <Upload class="h-5 w-5" />
+              <div
+                class="cursor-pointer flex flex-col items-center gap-1.5"
+                @click="fileInputRef?.click()"
+              >
+                <div class="h-9 w-9 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <Upload class="h-4 w-4" />
                 </div>
                 <div class="text-sm font-medium text-zinc-200">Click to upload or drag & drop</div>
-                <div class="text-xs text-zinc-500">PNG, JPG, WebP up to 10MB</div>
+                <div class="text-xs text-zinc-500 flex items-center gap-1 justify-center">
+                  <span>or press</span>
+                  <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 text-zinc-300 rounded border border-zinc-700">Ctrl+V</kbd>
+                  <span>/</span>
+                  <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 text-zinc-300 rounded border border-zinc-700">Cmd+V</kbd>
+                  <span>to paste</span>
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-zinc-800/80 flex items-center justify-center">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 hover:text-white border border-zinc-700/60 transition-colors shadow-sm"
+                  @click.stop="pasteFromClipboardButton"
+                >
+                  <ClipboardPaste class="h-3.5 w-3.5 text-indigo-400" />
+                  <span>Paste from Clipboard</span>
+                </button>
               </div>
             </div>
 
