@@ -12,7 +12,7 @@ func applyGeminiThinkingPreset(req *GenerateContentRequest) {
 	}
 
 	modelLower := strings.ToLower(req.Model)
-	if !strings.Contains(modelLower, "gemini") {
+	if !strings.Contains(modelLower, "gemini") || strings.Contains(modelLower, "flash-image") || strings.Contains(modelLower, "imagen") {
 		return
 	}
 

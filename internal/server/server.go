@@ -180,6 +180,8 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/v1/models/", s.modelsHandler)
 	s.mux.HandleFunc("/v1/models", s.modelsHandler)
 	s.mux.HandleFunc("/v1/chat/completions", s.adminMiddleware(s.openAIChatCompletionsHandler))
+	s.mux.HandleFunc("/v1/images/generations", s.adminMiddleware(s.openAIImagesGenerationsHandler))
+	s.mux.HandleFunc("/v1/images/edits", s.adminMiddleware(s.openAIImagesEditsHandler))
 
 	// MCP endpoint. The handler is built once so the tool set is shared across
 	// requests; the session itself is stateless.
@@ -202,6 +204,11 @@ func (s *Server) setupRoutes() {
 		s.mux.HandleFunc("/api/accounts/auth/status", s.dashboardAuthMiddleware(s.googleAuthStatusHandler))
 	}
 	s.mux.HandleFunc("/api/playground/chat", s.dashboardAuthMiddleware(s.openAIChatCompletionsHandler))
+	s.mux.HandleFunc("/api/playground/images/generate", s.dashboardAuthMiddleware(s.openAIImagesGenerationsHandler))
+	s.mux.HandleFunc("/api/playground/images/generations", s.dashboardAuthMiddleware(s.openAIImagesGenerationsHandler))
+	s.mux.HandleFunc("/api/playground/images/edit", s.dashboardAuthMiddleware(s.openAIImagesEditsHandler))
+	s.mux.HandleFunc("/api/playground/images/edits", s.dashboardAuthMiddleware(s.openAIImagesEditsHandler))
+	s.mux.HandleFunc("/api/playground/images/enhance-prompt", s.dashboardAuthMiddleware(s.dashboardImageEnhancePromptHandler))
 	s.mux.HandleFunc("/api/usage/stats", s.dashboardAuthMiddleware(s.handleUsageStats))
 	s.mux.HandleFunc("/api/usage/requests", s.dashboardAuthMiddleware(s.handleUsageRequests))
 

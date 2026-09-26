@@ -152,7 +152,7 @@ func ensureAntigravityThinkingDefaults(req *GenerateContentRequest) {
 		return
 	}
 	modelLower := strings.ToLower(req.Model)
-	if strings.Contains(modelLower, "gpt-oss") {
+	if strings.Contains(modelLower, "gpt-oss") || strings.Contains(modelLower, "flash-image") || strings.Contains(modelLower, "imagen") {
 		if req.Request.GenerationConfig != nil {
 			req.Request.GenerationConfig.ThinkingConfig = nil
 		}

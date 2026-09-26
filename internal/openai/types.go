@@ -73,3 +73,40 @@ type Usage struct {
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
 }
+
+// ImageGenerationRequest represents a request for OpenAI image generation endpoint.
+type ImageGenerationRequest struct {
+	Prompt         string `json:"prompt"`
+	Model          string `json:"model,omitempty"`
+	N              int    `json:"n,omitempty"`
+	Quality        string `json:"quality,omitempty"`
+	ResponseFormat string `json:"response_format,omitempty"`
+	Size           string `json:"size,omitempty"`
+	Style          string `json:"style,omitempty"`
+	User           string `json:"user,omitempty"`
+}
+
+// ImageEditRequest represents a request for OpenAI image editing endpoint.
+type ImageEditRequest struct {
+	Image          string `json:"image"` // base64 string or data URI for JSON requests
+	Prompt         string `json:"prompt"`
+	Mask           string `json:"mask,omitempty"`
+	Model          string `json:"model,omitempty"`
+	N              int    `json:"n,omitempty"`
+	Size           string `json:"size,omitempty"`
+	ResponseFormat string `json:"response_format,omitempty"`
+	User           string `json:"user,omitempty"`
+}
+
+// ImageResponse represents OpenAI image generation/edit response.
+type ImageResponse struct {
+	Created int64       `json:"created"`
+	Data    []ImageData `json:"data"`
+}
+
+// ImageData represents a single generated or edited image.
+type ImageData struct {
+	B64JSON       string `json:"b64_json,omitempty"`
+	URL           string `json:"url,omitempty"`
+	RevisedPrompt string `json:"revised_prompt,omitempty"`
+}

@@ -151,8 +151,13 @@ func (p *AccountPool) try(req *antigravity.GenerateContentRequest, call func(*an
 // cooldownFor reports whether err means "this account can't serve now" and for how long.
 func cooldownFor(err error) (time.Duration, bool) {
 	var upstreamErr *antigravity.UpstreamError
-	if errors.As(err, &upstreamErr) && upstreamErr.StatusCode == 429 {
-		return parseRetryDelay(upstreamErr.Body), true
+	if errors.As(err, &upstreamErr) {
+		if upstreamErr.StatusCode == 429 {
+			return parseRetryDelay(upstreamErr.Body), true
+		}
+		if upstreamErr.StatusCode >= 500 && upstreamErr.StatusCode <= 504 {
+			return 15 * time.Second, true
+		}
 	}
 	var credsErr *antigravity.CredentialsError
 	if errors.As(err, &credsErr) {
