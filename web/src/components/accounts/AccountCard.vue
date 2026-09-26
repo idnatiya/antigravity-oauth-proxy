@@ -9,9 +9,12 @@ import {
   Sparkles,
   Bot,
   Shield,
+  ShieldAlert,
   Lock,
   Zap,
   RefreshCw,
+  ExternalLink,
+  CheckCircle2,
 } from '@lucide/vue'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -132,6 +135,23 @@ const isGenuineError = computed(() => {
   if (!props.account.quotaError) return false
   const err = props.account.quotaError.toLowerCase()
   return !err.includes('no google ai pro') && !err.includes('403') && !err.includes('permission') && !err.includes('subscription')
+})
+
+const needsVerification = computed(() => {
+  if (props.account.needsVerification) return true
+  if (props.testResult?.needsVerification) return true
+  if (props.account.validationUrl) return true
+  const reason = props.account.coolingReason?.toLowerCase() || ''
+  if (reason.includes('verification') || reason.includes('verify your account')) return true
+  const qErr = props.account.quotaError?.toLowerCase() || ''
+  if (qErr.includes('verification') || qErr.includes('verify your account')) return true
+  const testErr = props.testResult?.error?.toLowerCase() || ''
+  if (testErr.includes('verification') || testErr.includes('verify your account')) return true
+  return false
+})
+
+const verificationLink = computed(() => {
+  return props.account.validationUrl || props.testResult?.validationUrl || 'https://accounts.google.com/'
 })
 </script>
 
@@ -286,7 +306,14 @@ const isGenuineError = computed(() => {
             </span>
 
             <span
-              v-if="isCooling"
+              v-if="needsVerification"
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[11px] font-semibold"
+            >
+              <ShieldAlert class="h-3 w-3 text-amber-400" />
+              Verification Needed
+            </span>
+            <span
+              v-else-if="isCooling"
               :title="`${account.coolingReason ?? ''} (until ${localTime(account.coolingUntil)})`"
               class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] font-medium"
             >
@@ -307,9 +334,56 @@ const isGenuineError = computed(() => {
         </div>
       </div>
 
-      <!-- Cooling Alert Banner (if in cooldown) -->
+      <!-- Verification Required Alert Banner -->
       <div
-        v-if="isCooling"
+        v-if="needsVerification"
+        class="px-5 py-3.5 bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/10 border-b border-amber-500/30 text-amber-200 text-xs space-y-2.5 shadow-inner"
+      >
+        <div class="flex items-start gap-2.5">
+          <ShieldAlert class="h-4.5 w-4.5 text-amber-400 shrink-0 mt-0.5" />
+          <div class="space-y-1 flex-1 min-w-0">
+            <div class="font-semibold text-amber-300 flex items-center gap-2">
+              <span>Google Account Verification Required (HTTP 403)</span>
+              <span class="px-1.5 py-0.2 rounded text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 font-mono font-medium">ACTION REQUIRED</span>
+            </div>
+            <p class="text-[11px] text-amber-200/90 leading-relaxed">
+              Google has flagged this account for manual verification (captcha/security confirmation). Complete the check in your browser to re-enable API access.
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2 pt-1 pl-7">
+          <a
+            :href="verificationLink"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold text-xs transition-colors shadow-sm cursor-pointer"
+            title="Open Google verification in a new browser tab"
+          >
+            <ExternalLink class="h-3.5 w-3.5" />
+            <span>Verify Account</span>
+          </a>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="h-7 text-xs border-amber-500/40 bg-zinc-900/80 text-amber-300 hover:text-white hover:bg-amber-500/20"
+            :disabled="disabled || isTesting"
+            @click="emit('test', account)"
+            title="Test account connectivity and clear warning if verification is complete"
+          >
+            <RefreshCw v-if="isTesting" class="h-3 w-3 animate-spin mr-1 text-amber-400" />
+            <CheckCircle2 v-else class="h-3 w-3 mr-1 text-emerald-400" />
+            <span>Re-check Status</span>
+          </Button>
+        </div>
+      </div>
+
+      <!-- Cooling Alert Banner (if in cooldown and not verification) -->
+      <div
+        v-else-if="isCooling"
         class="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20 text-amber-200 text-xs flex items-start gap-2.5"
       >
         <AlertTriangle class="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />

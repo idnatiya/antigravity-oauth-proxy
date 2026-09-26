@@ -11,6 +11,7 @@ import {
   Activity,
   X,
   Zap,
+  ShieldAlert,
 } from '@lucide/vue'
 import { apiClient } from '@/services/apiClient'
 import { useUsageStore } from '@/stores/usageStore'
@@ -100,6 +101,16 @@ async function testAccount(acc: AccountItem) {
       params: { id: acc.id },
     })
     testResults.value[acc.id] = res.result
+    if (res.result.success) {
+      acc.needsVerification = false
+      acc.validationUrl = undefined
+      acc.coolingUntil = undefined
+      acc.coolingReason = undefined
+      successMessage.value = `Account ${acc.id} is verified and ready!`
+    } else if (res.result.needsVerification) {
+      acc.needsVerification = true
+      acc.validationUrl = res.result.validationUrl
+    }
   } catch (err: unknown) {
     testResults.value[acc.id] = {
       id: acc.id,
@@ -123,6 +134,18 @@ async function testAllAccounts() {
     const res = await apiClient.post<{ results: AccountTestResult[] }>('/api/accounts/test')
     for (const r of res.results || []) {
       testResults.value[r.id] = r
+      const acc = accounts.value.find(a => a.id === r.id)
+      if (acc) {
+        if (r.success) {
+          acc.needsVerification = false
+          acc.validationUrl = undefined
+          acc.coolingUntil = undefined
+          acc.coolingReason = undefined
+        } else if (r.needsVerification) {
+          acc.needsVerification = true
+          acc.validationUrl = r.validationUrl
+        }
+      }
     }
     successMessage.value = `Connection test completed for ${res.results?.length || 0} accounts.`
   } catch (err: unknown) {
@@ -132,6 +155,10 @@ async function testAllAccounts() {
     testingAll.value = false
   }
 }
+
+const accountsNeedingVerification = computed(() => {
+  return accounts.value.filter(a => a.needsVerification || testResults.value[a.id]?.needsVerification)
+})
 
 // KPI Stats computation
 const totalAccountsCount = computed(() => accounts.value.length)
@@ -240,6 +267,22 @@ onMounted(() => run(load))
           <Plus class="h-3.5 w-3.5" />
           <span>Connect Account</span>
         </Button>
+      </div>
+    </div>
+
+    <!-- Global Verification Required Banner -->
+    <div
+      v-if="accountsNeedingVerification.length > 0"
+      class="p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/10 border border-amber-500/30 text-amber-200 text-xs shadow-md flex items-start gap-3"
+    >
+      <ShieldAlert class="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+      <div class="space-y-1 flex-1">
+        <div class="font-semibold text-amber-300 text-sm flex items-center gap-2">
+          <span>Action Required: {{ accountsNeedingVerification.length }} Account(s) Require Google Verification</span>
+        </div>
+        <p class="text-amber-200/90 leading-relaxed text-xs">
+          Google CloudCode security has returned HTTP 403 requiring manual identity or captcha confirmation. Click the <strong>"Verify Account"</strong> button on the highlighted account card below to complete verification in your browser, then click <strong>"Re-check Status"</strong>.
+        </p>
       </div>
     </div>
 

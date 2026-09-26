@@ -663,6 +663,15 @@ func upstreamErrorStatus(err error, fallback string) (int, string) {
 	if !errors.As(err, &upstreamErr) || upstreamErr.StatusCode < 400 {
 		return http.StatusInternalServerError, fallback
 	}
+
+	if upstreamErr.IsVerificationRequired() {
+		vURL := upstreamErr.ExtractValidationURL()
+		if vURL != "" {
+			return http.StatusForbidden, fmt.Sprintf("Verify your account to continue: %s (or visit /dashboard/accounts)", vURL)
+		}
+		return http.StatusForbidden, "Verify your account to continue. Visit /dashboard/accounts to complete verification."
+	}
+
 	var body struct {
 		Error struct {
 			Message string `json:"message"`

@@ -38,15 +38,17 @@ var (
 )
 
 type account struct {
-	id         string // email, or "default" for the legacy oauth_creds.json account
-	path       string // "" when credentials come from CLOUDCODE_OAUTH_CREDS; cannot be removed
-	projectID  string
-	client     *antigravity.Client
-	coolUntil  time.Time                 // guarded by AccountPool.mu
-	coolReason string                    // guarded by AccountPool.mu
-	quota      *antigravity.QuotaSummary // guarded by AccountPool.mu
-	quotaErr   string                    // guarded by AccountPool.mu
-	quotaAt    time.Time                 // guarded by AccountPool.mu
+	id                string // email, or "default" for the legacy oauth_creds.json account
+	path              string // "" when credentials come from CLOUDCODE_OAUTH_CREDS; cannot be removed
+	projectID         string
+	client            *antigravity.Client
+	coolUntil         time.Time                 // guarded by AccountPool.mu
+	coolReason        string                    // guarded by AccountPool.mu
+	quota             *antigravity.QuotaSummary // guarded by AccountPool.mu
+	quotaErr          string                    // guarded by AccountPool.mu
+	quotaAt           time.Time                 // guarded by AccountPool.mu
+	needsVerification bool                      // guarded by AccountPool.mu
+	validationURL     string                    // guarded by AccountPool.mu
 }
 
 // AccountPool holds the Google accounts used for upstream requests. Accounts
@@ -135,13 +137,29 @@ func (p *AccountPool) try(req *antigravity.GenerateContentRequest, call func(*an
 		if err = call(a.client, &r); err == nil {
 			return nil
 		}
+		var upstreamErr *antigravity.UpstreamError
+		if errors.As(err, &upstreamErr) && upstreamErr.IsVerificationRequired() {
+			vURL := upstreamErr.ExtractValidationURL()
+			p.mu.Lock()
+			a.needsVerification = true
+			a.validationURL = vURL
+			p.mu.Unlock()
+			logger.Get().Warn().
+				Str("account", a.id).
+				Str("validation_url", vURL).
+				Msg("Google account requires verification (403 VALIDATION_REQUIRED)")
+		}
 		d, ok := cooldownFor(err)
 		if !ok {
 			return err
 		}
 		p.mu.Lock()
 		a.coolUntil = p.now().Add(d)
-		a.coolReason = err.Error()
+		if a.needsVerification {
+			a.coolReason = "Account verification required by Google"
+		} else {
+			a.coolReason = err.Error()
+		}
 		p.mu.Unlock()
 		logger.Get().Warn().Err(err).Str("account", a.id).Dur("cooldown", d).Msg("Account unavailable, trying next account")
 	}
@@ -152,6 +170,9 @@ func (p *AccountPool) try(req *antigravity.GenerateContentRequest, call func(*an
 func cooldownFor(err error) (time.Duration, bool) {
 	var upstreamErr *antigravity.UpstreamError
 	if errors.As(err, &upstreamErr) {
+		if upstreamErr.IsVerificationRequired() {
+			return 30 * time.Minute, true
+		}
 		if upstreamErr.StatusCode == 429 {
 			return parseRetryDelay(upstreamErr.Body), true
 		}
@@ -199,6 +220,9 @@ type accountView struct {
 
 	Quota      *antigravity.QuotaSummary `json:"quota,omitempty"`
 	QuotaError string                    `json:"quotaError,omitempty"`
+
+	NeedsVerification bool   `json:"needsVerification,omitempty"`
+	ValidationURL     string `json:"validationUrl,omitempty"`
 }
 
 // refreshQuotas re-reads usage for accounts whose cached summary is older than
@@ -226,6 +250,17 @@ func (p *AccountPool) refreshQuotas(ctx context.Context) {
 			defer p.mu.Unlock()
 			a.quotaAt = p.now()
 			if err != nil {
+				var upstreamErr *antigravity.UpstreamError
+				if errors.As(err, &upstreamErr) && upstreamErr.IsVerificationRequired() {
+					vURL := upstreamErr.ExtractValidationURL()
+					a.needsVerification = true
+					a.validationURL = vURL
+					a.quotaErr = "Account verification required by Google"
+					a.coolUntil = p.now().Add(30 * time.Minute)
+					a.coolReason = "Account verification required by Google"
+					logger.Get().Warn().Str("account", a.id).Str("validation_url", vURL).Msg("Quota check: account requires verification")
+					return
+				}
 				errMsg := err.Error()
 				if strings.Contains(errMsg, "403") || strings.Contains(strings.ToLower(errMsg), "permission") || strings.Contains(strings.ToLower(errMsg), "subscription") {
 					a.quotaErr = "No Google AI Pro subscription on this account"
@@ -236,6 +271,10 @@ func (p *AccountPool) refreshQuotas(ctx context.Context) {
 				return
 			}
 			a.quota, a.quotaErr = summary, ""
+			if a.needsVerification {
+				a.needsVerification = false
+				a.validationURL = ""
+			}
 		}()
 	}
 	wg.Wait()
@@ -247,7 +286,15 @@ func (p *AccountPool) list() []accountView {
 	now := p.now()
 	views := make([]accountView, 0, len(p.accounts))
 	for _, a := range p.accounts {
-		v := accountView{ID: a.id, ProjectID: a.projectID, Removable: a.path != "", Quota: a.quota, QuotaError: a.quotaErr}
+		v := accountView{
+			ID:                a.id,
+			ProjectID:         a.projectID,
+			Removable:         a.path != "",
+			Quota:             a.quota,
+			QuotaError:        a.quotaErr,
+			NeedsVerification: a.needsVerification,
+			ValidationURL:     a.validationURL,
+		}
 		if now.Before(a.coolUntil) {
 			v.CoolingUntil = a.coolUntil.UTC().Format(time.RFC3339)
 			v.CoolingReason = a.coolReason
@@ -402,11 +449,13 @@ func (s *Server) accountsHandler(w http.ResponseWriter, r *http.Request) {
 
 // AccountTestResult holds the health check / test connection result for an account.
 type AccountTestResult struct {
-	ID        string `json:"id"`
-	ProjectID string `json:"projectId"`
-	Success   bool   `json:"success"`
-	LatencyMs int64  `json:"latencyMs"`
-	Error     string `json:"error,omitempty"`
+	ID                string `json:"id"`
+	ProjectID         string `json:"projectId"`
+	Success           bool   `json:"success"`
+	LatencyMs         int64  `json:"latencyMs"`
+	Error             string `json:"error,omitempty"`
+	NeedsVerification bool   `json:"needsVerification,omitempty"`
+	ValidationURL     string `json:"validationUrl,omitempty"`
 }
 
 // testAccount runs a live LoadCodeAssist check for an account to verify credentials and connectivity.
@@ -438,8 +487,27 @@ func (p *AccountPool) testAccount(ctx context.Context, id string) (*AccountTestR
 	if err != nil {
 		res.Success = false
 		res.Error = err.Error()
+		var upstreamErr *antigravity.UpstreamError
+		if errors.As(err, &upstreamErr) && upstreamErr.IsVerificationRequired() {
+			vURL := upstreamErr.ExtractValidationURL()
+			p.mu.Lock()
+			target.needsVerification = true
+			target.validationURL = vURL
+			target.coolUntil = p.now().Add(30 * time.Minute)
+			target.coolReason = "Account verification required by Google"
+			p.mu.Unlock()
+			res.NeedsVerification = true
+			res.ValidationURL = vURL
+			res.Error = "Account verification required by Google"
+		}
 	} else {
 		res.Success = true
+		p.mu.Lock()
+		target.needsVerification = false
+		target.validationURL = ""
+		target.coolUntil = time.Time{}
+		target.coolReason = ""
+		p.mu.Unlock()
 	}
 
 	return res, nil
@@ -469,8 +537,27 @@ func (p *AccountPool) testAllAccounts(ctx context.Context) []AccountTestResult {
 			if err != nil {
 				res.Success = false
 				res.Error = err.Error()
+				var upstreamErr *antigravity.UpstreamError
+				if errors.As(err, &upstreamErr) && upstreamErr.IsVerificationRequired() {
+					vURL := upstreamErr.ExtractValidationURL()
+					p.mu.Lock()
+					acc.needsVerification = true
+					acc.validationURL = vURL
+					acc.coolUntil = p.now().Add(30 * time.Minute)
+					acc.coolReason = "Account verification required by Google"
+					p.mu.Unlock()
+					res.NeedsVerification = true
+					res.ValidationURL = vURL
+					res.Error = "Account verification required by Google"
+				}
 			} else {
 				res.Success = true
+				p.mu.Lock()
+				acc.needsVerification = false
+				acc.validationURL = ""
+				acc.coolUntil = time.Time{}
+				acc.coolReason = ""
+				p.mu.Unlock()
 			}
 			results[idx] = res
 		}(i, a)

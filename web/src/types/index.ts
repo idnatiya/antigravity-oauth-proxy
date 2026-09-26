@@ -113,6 +113,8 @@ export interface AccountItem {
   coolingReason?: string
   quota?: { groups: QuotaGroup[] }
   quotaError?: string
+  needsVerification?: boolean
+  validationUrl?: string
 }
 
 export interface AccountTestResult {
@@ -121,6 +123,8 @@ export interface AccountTestResult {
   success: boolean
   latencyMs: number
   error?: string
+  needsVerification?: boolean
+  validationUrl?: string
 }
 
 export interface APIKey {

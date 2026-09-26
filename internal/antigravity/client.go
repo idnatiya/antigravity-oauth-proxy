@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -18,11 +19,56 @@ import (
 	"github.com/dvcrn/antigravity-oauth-proxy/internal/logger"
 )
 
+var validationURLPattern = regexp.MustCompile(`"validation_url"\s*:\s*"(https?://[^"]+)"`)
+
 type UpstreamError struct {
 	StatusCode  int
 	Body        []byte
 	ContentType string
 	Endpoint    string
+}
+
+// IsVerificationRequired reports whether the upstream failure is a 403 error requiring
+// account/human verification (e.g. VALIDATION_REQUIRED or "Verify your account to continue").
+func (e *UpstreamError) IsVerificationRequired() bool {
+	if e == nil || e.StatusCode != http.StatusForbidden {
+		return false
+	}
+	bodyStr := string(e.Body)
+	return strings.Contains(bodyStr, "VALIDATION_REQUIRED") ||
+		strings.Contains(bodyStr, "Verify your account to continue") ||
+		strings.Contains(bodyStr, "validation_url")
+}
+
+// ExtractValidationURL extracts the Google verification link from ErrorInfo metadata in the error body.
+// If no specific URL is found in the error details, it falls back to Google's account security page.
+func (e *UpstreamError) ExtractValidationURL() string {
+	if e == nil {
+		return ""
+	}
+
+	var payload struct {
+		Error struct {
+			Details []struct {
+				Metadata map[string]string `json:"metadata"`
+			} `json:"details"`
+		} `json:"error"`
+	}
+
+	if err := json.Unmarshal(e.Body, &payload); err == nil {
+		for _, d := range payload.Error.Details {
+			if url, ok := d.Metadata["validation_url"]; ok && strings.TrimSpace(url) != "" {
+				return strings.TrimSpace(url)
+			}
+		}
+	}
+
+	// Fallback regex matching
+	if m := validationURLPattern.FindSubmatch(e.Body); m != nil {
+		return string(m[1])
+	}
+
+	return "https://accounts.google.com/"
 }
 
 // CredentialsError marks failures to obtain or refresh the OAuth token, as
