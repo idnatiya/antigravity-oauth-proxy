@@ -84,10 +84,11 @@ const svgArea = computed(() => {
   return `${svgPath.value} L ${svgWidth} ${svgHeight} L 0 ${svgHeight} Z`
 })
 
-function handleMouseMove(e: MouseEvent) {
+function handlePointerMove(e: MouseEvent | TouchEvent) {
   if (!chartSvgRef.value || computedCoords.value.length === 0) return
   const rect = chartSvgRef.value.getBoundingClientRect()
-  const mouseX = e.clientX - rect.left
+  const clientX = 'touches' in e && e.touches.length > 0 ? e.touches[0].clientX : (e as MouseEvent).clientX
+  const mouseX = clientX - rect.left
   const relativeX = (mouseX / rect.width) * svgWidth
 
   // Find closest point by X coordinate
@@ -184,8 +185,11 @@ function formatDisplayValue(val: number): string {
       <div
         v-else
         class="w-full h-full relative"
-        @mousemove="handleMouseMove"
+        @mousemove="handlePointerMove"
+        @touchstart.passive="handlePointerMove"
+        @touchmove.passive="handlePointerMove"
         @mouseleave="handleMouseLeave"
+        @touchend.passive="handleMouseLeave"
       >
         <svg
           ref="chartSvgRef"

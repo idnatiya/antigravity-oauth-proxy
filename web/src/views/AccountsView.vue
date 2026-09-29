@@ -232,7 +232,7 @@ onMounted(() => run(load))
         </p>
       </div>
 
-      <div class="shrink-0 flex items-center gap-2.5">
+      <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
         <Button
           v-if="accounts.length > 0"
           variant="outline"

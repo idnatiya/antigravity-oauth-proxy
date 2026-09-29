@@ -117,7 +117,7 @@ function copyJson() {
         </div>
 
         <!-- 3 KPI Metric Cards -->
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
           <div class="p-3.5 rounded-xl bg-[#0d0e11] border border-zinc-800/80 space-y-1">
             <span class="text-[10px] text-zinc-500 uppercase flex items-center gap-1.5 font-sans font-medium">
               <Clock class="h-3 w-3 text-zinc-400" /> Latency

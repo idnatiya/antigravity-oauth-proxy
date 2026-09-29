@@ -167,59 +167,61 @@ const verificationLink = computed(() => {
   >
     <div>
       <!-- Header -->
-      <div class="p-5 pb-4 border-b border-[#282a32] flex items-start gap-3.5">
-        <!-- Avatar Initial with dynamic ring -->
-        <div
-          class="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center font-bold text-sm select-none shadow-sm transition-transform"
-          :class="[
-            isPrimary && !isCooling
-              ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-              : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-          ]"
-        >
-          {{ initial }}
-        </div>
-
-        <!-- Identity info -->
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span
-              class="text-sm font-semibold text-white truncate font-sans tracking-tight"
-              :title="account.id"
-            >
-              {{ account.id }}
-            </span>
-            <button
-              type="button"
-              @click="copyToClipboard(account.id, 'email')"
-              :title="copiedField === 'email' ? 'Copied!' : 'Copy account email'"
-              class="text-zinc-500 hover:text-zinc-300 p-0.5 rounded transition-colors cursor-pointer"
-            >
-              <Check v-if="copiedField === 'email'" class="h-3.5 w-3.5 text-emerald-400" />
-              <Copy v-else class="h-3.5 w-3.5" />
-            </button>
+      <div class="p-4 sm:p-5 pb-4 border-b border-[#282a32] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+        <div class="flex items-start gap-3.5 min-w-0 w-full sm:w-auto">
+          <!-- Avatar Initial with dynamic ring -->
+          <div
+            class="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center font-bold text-sm select-none shadow-sm transition-transform"
+            :class="[
+              isPrimary && !isCooling
+                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+            ]"
+          >
+            {{ initial }}
           </div>
 
-          <div class="mt-1 flex items-center gap-2 text-xs">
-            <span class="text-zinc-500">Project:</span>
-            <span class="text-zinc-300 font-mono text-[11px] truncate max-w-[180px]" :title="account.projectId">
-              {{ account.projectId || 'None' }}
-            </span>
-            <button
-              v-if="account.projectId"
-              type="button"
-              @click="copyToClipboard(account.projectId, 'project')"
-              :title="copiedField === 'project' ? 'Copied!' : 'Copy project ID'"
-              class="text-zinc-500 hover:text-zinc-300 p-0.5 rounded transition-colors cursor-pointer"
-            >
-              <Check v-if="copiedField === 'project'" class="h-3.5 w-3.5 text-emerald-400" />
-              <Copy v-else class="h-3.5 w-3.5" />
-            </button>
+          <!-- Identity info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span
+                class="text-sm font-semibold text-white truncate font-sans tracking-tight"
+                :title="account.id"
+              >
+                {{ account.id }}
+              </span>
+              <button
+                type="button"
+                @click="copyToClipboard(account.id, 'email')"
+                :title="copiedField === 'email' ? 'Copied!' : 'Copy account email'"
+                class="text-zinc-500 hover:text-zinc-300 p-0.5 rounded transition-colors cursor-pointer shrink-0"
+              >
+                <Check v-if="copiedField === 'email'" class="h-3.5 w-3.5 text-emerald-400" />
+                <Copy v-else class="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div class="mt-1 flex items-center gap-2 text-xs">
+              <span class="text-zinc-500">Project:</span>
+              <span class="text-zinc-300 font-mono text-[11px] truncate max-w-[140px] sm:max-w-[180px]" :title="account.projectId">
+                {{ account.projectId || 'None' }}
+              </span>
+              <button
+                v-if="account.projectId"
+                type="button"
+                @click="copyToClipboard(account.projectId, 'project')"
+                :title="copiedField === 'project' ? 'Copied!' : 'Copy project ID'"
+                class="text-zinc-500 hover:text-zinc-300 p-0.5 rounded transition-colors cursor-pointer shrink-0"
+              >
+                <Check v-if="copiedField === 'project'" class="h-3.5 w-3.5 text-emerald-400" />
+                <Copy v-else class="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Priority & Status Badges -->
-        <div class="shrink-0 flex flex-col items-end gap-1.5">
+        <div class="shrink-0 flex flex-wrap sm:flex-col items-start sm:items-end justify-between w-full sm:w-auto gap-1.5 pt-1 sm:pt-0 border-t sm:border-t-0 border-[#282a32]/60">
           <div class="flex items-center gap-2">
             <!-- Plan Tier Badge -->
             <Badge

@@ -503,10 +503,10 @@ onMounted(() => {
 
       <!-- Right Column: Live Output & Telemetry Console (7 cols) -->
       <div class="lg:col-span-7 flex flex-col">
-        <Card class="bg-[#121316] border-zinc-800/80 overflow-hidden flex flex-col h-[580px] lg:h-[640px] shadow-sm">
+        <Card class="bg-[#121316] border-zinc-800/80 overflow-hidden flex flex-col h-[420px] sm:h-[520px] lg:h-[640px] shadow-sm">
           <!-- Console Chrome Header -->
-          <div class="px-5 py-3 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/40 shrink-0">
-            <div class="flex items-center gap-2.5">
+          <div class="px-4 sm:px-5 py-2.5 sm:py-3 border-b border-zinc-800/80 flex flex-wrap items-center justify-between bg-zinc-900/40 shrink-0 gap-2">
+            <div class="flex items-center gap-2 sm:gap-2.5">
               <span class="text-xs font-semibold text-white">Execution Output</span>
               <!-- Status Indicator -->
               <Badge

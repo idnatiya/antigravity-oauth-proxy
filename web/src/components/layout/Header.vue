@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { LogOut, RefreshCw, Layers, Copy, Check, ChevronRight } from '@lucide/vue'
+import { LogOut, RefreshCw, Layers, Copy, Check, ChevronRight, Menu, X } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsageStore } from '@/stores/usageStore'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+
+defineProps<{
+  isMobileSidebarOpen?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'toggleSidebar'): void
+}>()
 
 const route = useRoute()
 const router = useRouter()
@@ -57,18 +65,30 @@ async function refreshData() {
 </script>
 
 <template>
-  <header class="h-16 border-b border-zinc-800/60 bg-[#0e0f12]/80 backdrop-blur-md px-6 md:px-8 flex items-center justify-between shrink-0 sticky top-0 z-20">
+  <header class="h-16 border-b border-zinc-800/60 bg-[#0e0f12]/80 backdrop-blur-md px-4 sm:px-6 md:px-8 flex items-center justify-between shrink-0 sticky top-0 z-20">
     <!-- Breadcrumb & Page Info -->
-    <div class="flex items-center gap-3">
-      <div class="flex items-center text-sm text-zinc-500 font-medium">
-        <span>Control Plane</span>
-        <ChevronRight class="h-4 w-4 mx-1.5 text-zinc-600" />
-        <span class="text-zinc-100 font-semibold text-base">{{ pageTitle }}</span>
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+      <!-- Mobile Sidebar Toggle Hamburger Button -->
+      <Button
+        variant="ghost"
+        size="icon"
+        @click="emit('toggleSidebar')"
+        class="h-9 w-9 text-zinc-400 hover:text-white hover:bg-zinc-800 md:hidden shrink-0"
+        title="Toggle menu"
+      >
+        <X v-if="isMobileSidebarOpen" class="h-5 w-5" />
+        <Menu v-else class="h-5 w-5" />
+      </Button>
+
+      <div class="flex items-center text-sm text-zinc-500 font-medium truncate">
+        <span class="hidden sm:inline">Control Plane</span>
+        <ChevronRight class="hidden sm:inline h-4 w-4 mx-1.5 text-zinc-600 shrink-0" />
+        <span class="text-zinc-100 font-semibold text-sm sm:text-base truncate">{{ pageTitle }}</span>
       </div>
 
       <div
         v-if="usageStore.account?.project_id"
-        class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/80 border border-zinc-800/80 text-xs font-mono text-zinc-400"
+        class="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/80 border border-zinc-800/80 text-xs font-mono text-zinc-400 shrink-0"
       >
         <Layers class="h-3.5 w-3.5 text-blue-400" />
         <span class="text-zinc-500">Project:</span>
@@ -77,7 +97,7 @@ async function refreshData() {
     </div>
 
     <!-- Actions & Status Bar -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
       <!-- 1-Click Copy Proxy Endpoint Pill -->
       <button
         @click="copyEndpoint"

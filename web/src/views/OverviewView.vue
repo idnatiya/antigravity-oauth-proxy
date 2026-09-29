@@ -21,9 +21,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 const usageStore = useUsageStore()
 
 const ranges = [
-  { label: 'Last 24 Hours', value: '24h' },
-  { label: 'Last 7 Days', value: '7d' },
-  { label: 'Last 30 Days', value: '30d' },
+  { label: 'Last 24 Hours', shortLabel: '24h', value: '24h' },
+  { label: 'Last 7 Days', shortLabel: '7d', value: '7d' },
+  { label: 'Last 30 Days', shortLabel: '30d', value: '30d' },
 ]
 
 function selectRange(r: string) {
@@ -117,9 +117,10 @@ const formattedTokens = computed(() => {
             :key="r.value"
             :value="r.value"
             :data-state="usageStore.timeRange === r.value ? 'active' : 'inactive'"
-            class="text-xs px-3.5 py-1.5 data-[state=active]:bg-zinc-800 data-[state=active]:text-white font-medium"
+            class="text-xs px-2.5 sm:px-3.5 py-1.5 data-[state=active]:bg-zinc-800 data-[state=active]:text-white font-medium"
           >
-            {{ r.label }}
+            <span class="sm:hidden">{{ r.shortLabel }}</span>
+            <span class="hidden sm:inline">{{ r.label }}</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>

@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Sparkles, Users, FlaskConical, CircleDot, KeyRound, Palette } from '@lucide/vue'
+import { LayoutDashboard, ListFilter, Cpu, ShieldCheck, Sparkles, Users, FlaskConical, CircleDot, KeyRound, Palette, X } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsageStore } from '@/stores/usageStore'
+import { Button } from '@/components/ui/button'
+
+defineProps<{
+  isMobileOpen?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+}>()
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -26,27 +35,46 @@ const accountsText = computed(() => {
   if (!acc.accounts_total) return 'None'
   return `${acc.accounts_ready}/${acc.accounts_total} ready`
 })
+
+function onNavClick() {
+  emit('close')
+}
 </script>
 
 <template>
-  <aside class="w-64 border-r border-zinc-800/60 bg-[#0e0f12] flex flex-col shrink-0 select-none z-30">
+  <aside
+    class="w-64 border-r border-zinc-800/60 bg-[#0e0f12] flex flex-col shrink-0 select-none z-50 fixed inset-y-0 left-0 transition-transform duration-200 ease-in-out md:static md:translate-x-0"
+    :class="isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'"
+  >
     <!-- Brand Header -->
-    <div class="h-16 px-5 border-b border-zinc-800/60 flex items-center gap-3">
-      <div class="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]">
-        <Sparkles class="h-4.5 w-4.5" />
-      </div>
-      <div>
-        <div class="font-semibold text-sm tracking-tight text-white flex items-center gap-1.5">
-          <span>Antigravity</span>
-          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30">
-            PROXY
-          </span>
+    <div class="h-16 px-5 border-b border-zinc-800/60 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]">
+          <Sparkles class="h-4.5 w-4.5" />
         </div>
-        <div class="text-xs text-zinc-500 font-mono flex items-center gap-1.5 mt-0.5">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          <span>Control Plane</span>
+        <div>
+          <div class="font-semibold text-sm tracking-tight text-white flex items-center gap-1.5">
+            <span>Antigravity</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30">
+              PROXY
+            </span>
+          </div>
+          <div class="text-xs text-zinc-500 font-mono flex items-center gap-1.5 mt-0.5">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+            <span>Control Plane</span>
+          </div>
         </div>
       </div>
+
+      <!-- Mobile Close Button -->
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-8 w-8 text-zinc-400 hover:text-white md:hidden"
+        @click="emit('close')"
+      >
+        <X class="h-4 w-4" />
+      </Button>
     </div>
 
     <!-- Navigation -->
@@ -55,6 +83,7 @@ const accountsText = computed(() => {
         v-for="item in navItems"
         :key="item.to"
         :to="item.to"
+        @click="onNavClick"
         class="group relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
         :class="[
           route.path.startsWith(item.to)
@@ -79,6 +108,7 @@ const accountsText = computed(() => {
     <div class="p-3 border-t border-zinc-800/60 bg-[#090a0c] space-y-2.5">
       <RouterLink
         to="/accounts"
+        @click="onNavClick"
         class="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/60 hover:border-zinc-700/80 transition-all text-xs group"
       >
         <div class="flex items-center gap-2">

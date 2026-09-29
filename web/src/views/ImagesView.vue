@@ -435,20 +435,20 @@ async function copyCode(text: string) {
           <!-- Mode Tabs -->
           <div class="flex rounded-lg bg-zinc-950/80 p-1 border border-zinc-800/60">
             <button
-              class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-2"
+              class="flex-1 py-2 px-2 sm:px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 sm:gap-2"
               :class="activeTab === 'generate' ? 'bg-blue-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'"
               @click="activeTab = 'generate'"
             >
-              <Sparkles class="h-3.5 w-3.5" />
-              <span>Generate (Text to Image)</span>
+              <Sparkles class="h-3.5 w-3.5 shrink-0" />
+              <span>Generate<span class="hidden sm:inline"> (Text to Image)</span></span>
             </button>
             <button
-              class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-2"
+              class="flex-1 py-2 px-2 sm:px-3 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 sm:gap-2"
               :class="activeTab === 'edit' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'"
               @click="activeTab = 'edit'"
             >
-              <Wand2 class="h-3.5 w-3.5" />
-              <span>Edit (Image to Image)</span>
+              <Wand2 class="h-3.5 w-3.5 shrink-0" />
+              <span>Edit<span class="hidden sm:inline"> (Image to Image)</span></span>
             </button>
           </div>
 
@@ -581,7 +581,7 @@ async function copyCode(text: string) {
           <!-- Aspect Ratio Options -->
           <div class="space-y-2">
             <label class="text-xs font-medium text-zinc-300">Aspect Ratio</label>
-            <div class="grid grid-cols-5 gap-1.5">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               <button
                 v-for="ratio in aspectRatios"
                 :key="ratio.id"
@@ -640,7 +640,7 @@ async function copyCode(text: string) {
         <!-- Canvas Card -->
         <Card class="bg-zinc-900/50 border-zinc-800/80 p-5 shadow-xl backdrop-blur-sm min-h-[480px] flex flex-col justify-between">
           <!-- Canvas Header / Status -->
-          <div class="flex items-center justify-between pb-3 border-b border-zinc-800/60 text-xs">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-zinc-800/60 text-xs">
             <div class="flex items-center gap-2">
               <span class="font-medium text-zinc-300">Canvas</span>
               <Badge v-if="currentImage" variant="outline" class="font-mono text-[10px] text-zinc-400 border-zinc-800">
@@ -652,51 +652,51 @@ async function copyCode(text: string) {
             </div>
 
             <!-- Toolbar Actions (When Image is Loaded) -->
-            <div v-if="currentImage && !isGenerating" class="flex items-center gap-1.5">
+            <div v-if="currentImage && !isGenerating" class="flex flex-wrap items-center gap-1.5">
               <Button
                 variant="outline"
                 size="sm"
-                class="h-8 px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
+                class="h-8 px-2 sm:px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
                 title="Use this image as input for Edit mode"
                 @click="useCurrentAsEditInput"
               >
-                <ArrowRight class="h-3.5 w-3.5 mr-1 text-indigo-400" />
-                <span>Iterate Edit</span>
+                <ArrowRight class="h-3.5 w-3.5 sm:mr-1 text-indigo-400" />
+                <span class="hidden sm:inline">Iterate Edit</span>
               </Button>
 
               <Button
                 variant="outline"
                 size="sm"
-                class="h-8 px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
+                class="h-8 px-2 sm:px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
                 title="Copy image bytes to clipboard"
                 @click="copyImageToClipboard(currentImage)"
               >
-                <Check v-if="copiedOutput" class="h-3.5 w-3.5 text-emerald-400 mr-1" />
-                <Copy v-else class="h-3.5 w-3.5 mr-1" />
-                <span>{{ copiedOutput ? 'Copied!' : 'Copy' }}</span>
+                <Check v-if="copiedOutput" class="h-3.5 w-3.5 text-emerald-400 sm:mr-1" />
+                <Copy v-else class="h-3.5 w-3.5 sm:mr-1" />
+                <span class="hidden sm:inline">{{ copiedOutput ? 'Copied!' : 'Copy' }}</span>
               </Button>
 
               <Button
                 variant="outline"
                 size="sm"
-                class="h-8 px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
+                class="h-8 px-2 sm:px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
                 title="Download as PNG"
                 @click="downloadImage(currentImage)"
               >
-                <Download class="h-3.5 w-3.5 mr-1" />
-                <span>PNG</span>
+                <Download class="h-3.5 w-3.5 sm:mr-1" />
+                <span class="hidden sm:inline">PNG</span>
               </Button>
 
               <Button
                 variant="outline"
                 size="sm"
-                class="h-8 px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
+                class="h-8 px-2 sm:px-2.5 text-xs border-zinc-800 bg-zinc-950 text-zinc-300 hover:text-white"
                 title="Copy Base64 string"
                 @click="copyBase64(currentImage)"
               >
-                <Check v-if="copiedBase64" class="h-3.5 w-3.5 text-emerald-400 mr-1" />
-                <Copy v-else class="h-3.5 w-3.5 mr-1 text-zinc-400" />
-                <span>{{ copiedBase64 ? 'Copied B64!' : 'B64' }}</span>
+                <Check v-if="copiedBase64" class="h-3.5 w-3.5 text-emerald-400 sm:mr-1" />
+                <Copy v-else class="h-3.5 w-3.5 sm:mr-1 text-zinc-400" />
+                <span class="hidden sm:inline">{{ copiedBase64 ? 'Copied B64!' : 'B64' }}</span>
               </Button>
 
               <Button

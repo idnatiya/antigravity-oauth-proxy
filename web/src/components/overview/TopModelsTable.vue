@@ -54,7 +54,7 @@ function testInPlayground(model: string) {
 </script>
 
 <template>
-  <Card class="p-6 bg-[#121316] border-zinc-800/80 shadow-sm flex flex-col gap-4">
+  <Card class="p-4 sm:p-6 bg-[#121316] border-zinc-800/80 shadow-sm flex flex-col gap-4">
     <div class="flex items-center justify-between">
       <div>
         <h3 class="text-base font-semibold text-white tracking-tight">Active Models Distribution</h3>
@@ -76,8 +76,8 @@ function testInPlayground(model: string) {
             <TableHead class="text-zinc-300 font-semibold text-sm">Model</TableHead>
             <TableHead class="text-zinc-300 font-semibold text-sm text-right">Requests</TableHead>
             <TableHead class="text-zinc-300 font-semibold text-sm text-right">Throughput</TableHead>
-            <TableHead class="text-zinc-300 font-semibold text-sm w-48 text-right">Traffic Share</TableHead>
-            <TableHead class="text-zinc-300 font-semibold text-sm w-28 text-right">Action</TableHead>
+            <TableHead class="text-zinc-300 font-semibold text-sm w-36 sm:w-48 text-right">Traffic Share</TableHead>
+            <TableHead class="text-zinc-300 font-semibold text-sm w-20 sm:w-28 text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -114,12 +114,12 @@ function testInPlayground(model: string) {
 
             <!-- Traffic Share Bar -->
             <TableCell class="text-right">
-              <div class="flex items-center justify-end gap-2.5">
+              <div class="flex items-center justify-end gap-1.5 sm:gap-2.5">
                 <Progress
                   :model-value="totalReqs > 0 ? (getModelRequests(m) / totalReqs) * 100 : 0"
-                  class="w-24 h-1.5 bg-zinc-800"
+                  class="w-16 sm:w-24 h-1.5 bg-zinc-800"
                 />
-                <span class="font-mono text-xs text-zinc-400 w-10 text-right font-medium">
+                <span class="font-mono text-xs text-zinc-400 w-8 sm:w-10 text-right font-medium">
                   {{ totalReqs > 0 ? Math.round((getModelRequests(m) / totalReqs) * 100) : 0 }}%
                 </span>
               </div>
@@ -131,11 +131,11 @@ function testInPlayground(model: string) {
                 variant="ghost"
                 size="sm"
                 @click="testInPlayground(m.model)"
-                class="h-8 px-2.5 text-xs text-zinc-400 hover:text-white hover:bg-blue-500/15 gap-1.5 transition-all opacity-80 group-hover:opacity-100 font-medium"
+                class="h-8 px-2 sm:px-2.5 text-xs text-zinc-400 hover:text-white hover:bg-blue-500/15 gap-1.5 transition-all opacity-80 group-hover:opacity-100 font-medium"
                 title="Test this model in Playground"
               >
                 <FlaskConical class="h-3.5 w-3.5 text-blue-400" />
-                <span>Test</span>
+                <span class="hidden sm:inline">Test</span>
               </Button>
             </TableCell>
           </TableRow>

@@ -438,19 +438,19 @@ onMounted(() => {
       </div>
 
       <Tabs default-value="cursor" class="w-full">
-        <TabsList class="bg-[#0e0f12] border border-zinc-800/80 p-0.5 h-9 rounded-lg">
-          <TabsTrigger value="cursor" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+        <TabsList class="bg-[#0e0f12] border border-zinc-800/80 p-0.5 h-9 rounded-lg flex items-center overflow-x-auto no-scrollbar w-full max-w-full">
+          <TabsTrigger value="cursor" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white shrink-0">
             <Cpu class="h-3.5 w-3.5 mr-1.5" />
             Cursor / IDE
           </TabsTrigger>
-          <TabsTrigger value="curl" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+          <TabsTrigger value="curl" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white shrink-0">
             <Terminal class="h-3.5 w-3.5 mr-1.5" />
             cURL / Shell
           </TabsTrigger>
-          <TabsTrigger value="python" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+          <TabsTrigger value="python" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white shrink-0">
             Python (OpenAI)
           </TabsTrigger>
-          <TabsTrigger value="gemini" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+          <TabsTrigger value="gemini" class="text-xs px-3 data-[state=active]:bg-zinc-800 data-[state=active]:text-white shrink-0">
             Gemini Native
           </TabsTrigger>
         </TabsList>
