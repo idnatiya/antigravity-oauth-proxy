@@ -5,7 +5,7 @@ import {
   Activity,
   CheckCircle2,
   HardDrive,
-  Zap,
+  Coins,
   FlaskConical,
   ListFilter,
   Users,
@@ -46,6 +46,20 @@ const formattedTokens = computed(() => {
   if (tokens >= 1_000_000) return (tokens / 1_000_000).toFixed(2) + 'M'
   if (tokens >= 1_000) return (tokens / 1_000).toFixed(1) + 'k'
   return tokens.toLocaleString()
+})
+
+const formattedCost = computed(() => {
+  const cost = usageStore.stats?.estimated_cost ?? usageStore.stats?.estimated_savings ?? 0
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) {
+    return `$${cost.toFixed(4)}`
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cost)
 })
 </script>
 
@@ -157,10 +171,10 @@ const formattedTokens = computed(() => {
       />
 
       <StatCard
-        title="Average Latency"
-        :value="`${Math.round(usageStore.stats?.avg_latency_ms || 0)} ms`"
-        subtitle="End-to-end response time"
-        :icon="Zap"
+        title="Estimated Cost"
+        :value="formattedCost"
+        subtitle="Commercial API equivalent"
+        :icon="Coins"
         color="amber"
       />
     </div>

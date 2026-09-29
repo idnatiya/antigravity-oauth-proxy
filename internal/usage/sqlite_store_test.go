@@ -106,6 +106,7 @@ func TestSQLiteStore(t *testing.T) {
 		assert.Equal(t, int64(250), stats.CompletionTokens)
 		assert.Equal(t, int64(850), stats.TotalTokens)
 		assert.Greater(t, stats.EstimatedSavings, 0.0)
+		assert.Greater(t, stats.EstimatedCost, 0.0)
 
 		assert.Len(t, stats.ModelBreakdown, 2)
 

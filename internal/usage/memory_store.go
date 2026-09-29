@@ -130,6 +130,10 @@ func (m *MemoryStore) GetStats(ctx context.Context, timeRange string) (*StatsSum
 	if summary.TotalRequests > 0 {
 		summary.AvgDurationMs = float64(totalDuration) / float64(summary.TotalRequests)
 	}
+	summary.ErrorRequests = summary.FailedRequests
+	summary.AvgLatencyMs = summary.AvgDurationMs
+	summary.EstimatedCost = summary.EstimatedSavings
+	summary.TimeSeries = summary.Timeline
 
 	for _, mu := range modelMap {
 		summary.ModelBreakdown = append(summary.ModelBreakdown, *mu)

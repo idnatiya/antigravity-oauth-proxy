@@ -354,6 +354,7 @@ func (s *SQLiteStore) GetStats(ctx context.Context, timeRange string) (*StatsSum
 
 	summary.ErrorRequests = summary.FailedRequests
 	summary.AvgLatencyMs = summary.AvgDurationMs
+	summary.EstimatedCost = summary.EstimatedSavings
 	summary.TimeSeries = summary.Timeline
 
 	return summary, nil

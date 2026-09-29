@@ -15,6 +15,7 @@ export interface ModelStat {
   prompt_tokens: number
   completion_tokens: number
   total_tokens: number
+  cost_savings?: number
 }
 
 export interface TimeSeriesPoint {
@@ -31,6 +32,8 @@ export interface UsageStats {
   completion_tokens: number
   total_tokens: number
   avg_latency_ms: number
+  estimated_cost?: number
+  estimated_savings?: number
   time_series?: TimeSeriesPoint[]
   model_breakdown?: ModelStat[]
 }

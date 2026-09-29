@@ -56,6 +56,7 @@ type StatsSummary struct {
 	CompletionTokens int64           `json:"completion_tokens"`
 	TotalTokens      int64           `json:"total_tokens"`
 	EstimatedSavings float64         `json:"estimated_savings"`
+	EstimatedCost    float64         `json:"estimated_cost"`
 	AvgDurationMs    float64         `json:"avg_duration_ms"`
 	AvgLatencyMs     float64         `json:"avg_latency_ms"`
 	ModelBreakdown   []ModelUsage    `json:"model_breakdown"`
